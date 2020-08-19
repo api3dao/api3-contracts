@@ -5,17 +5,12 @@ import "./interfaces/IInflationSchedule.sol";
 
 
 contract InflationSchedule is IInflationSchedule {
-    function getDelta(
-        uint256 t0,
-        uint256 t1
-        )
+    function getDelta(uint256 indEpoch)
         external
         view
         override
-        returns(uint256 delta)
+        returns(int256 delta) // supports deflation
     {
-        require(t1 >= t0, "Must satisfy t1 >= t0");
-        // Implement any inflation schedule you want below
-        delta = t1 - t0;
+        delta = int256(100000 - indEpoch * 100); // replace this with the actual schedule
     }
 }
