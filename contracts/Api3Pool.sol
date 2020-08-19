@@ -6,8 +6,17 @@ import "./EpochUtils.sol";
 
 
 contract Api3Pool is InterfaceUtils, EpochUtils {
-    // Total balances (staked, non-staked, vested, non-vested, etc.)
-    mapping(address => uint256) internal balances;
+    struct Vesting
+    {
+        address staker;
+        uint256 amount;
+        uint256 unlockTimestamp;
+    }
+  
+    mapping(address => uint256) private balances;
+    mapping(address => uint256) private withdrawable;
+    mapping(bytes32 => Vesting) private vestings;
+    uint256 private noVestings;
 
     constructor(
         address api3TokenAddress,
@@ -25,11 +34,28 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     function deposit(
         address source,
         uint256 amount,
-        address beneficiary
+        address beneficiary,
+        uint256 unlockTimestamp
         )
         external
     {
         api3Token.transferFrom(source, address(this), amount);
         balances[beneficiary] += amount;
+        if (unlockTimestamp == 0)
+        {
+            withdrawable[beneficiary] += amount;
+        }
+        else
+        {
+            bytes32 vestingId = keccak256(abi.encodePacked(
+                noVestings++,
+                this
+                ));
+            vestings[vestingId] = Vesting({
+                staker: beneficiary,
+                amount: amount,
+                unlockTimestamp: unlockTimestamp
+            });
+        }
     }
 }
