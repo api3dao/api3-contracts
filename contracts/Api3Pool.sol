@@ -14,7 +14,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     }
   
     mapping(address => uint256) private balances;
-    mapping(address => uint256) private withdrawable;
+    mapping(address => uint256) private nonVestedBalances;
     mapping(bytes32 => Vesting) private vestings;
     uint256 private noVestings;
 
@@ -41,12 +41,9 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     {
         api3Token.transferFrom(source, address(this), amount);
         balances[beneficiary] += amount;
-        if (unlockTimestamp == 0)
+        if (unlockTimestamp != 0)
         {
-            withdrawable[beneficiary] += amount;
-        }
-        else
-        {
+            nonVestedBalances[beneficiary] += amount;
             bytes32 vestingId = keccak256(abi.encodePacked(
                 noVestings++,
                 this
