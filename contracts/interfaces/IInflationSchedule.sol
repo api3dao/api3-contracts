@@ -6,5 +6,5 @@ interface IInflationSchedule {
     function getDelta(uint256 indEpoch)
         external
         view
-        returns(int256 delta);
+        returns(uint256 delta);
 }
