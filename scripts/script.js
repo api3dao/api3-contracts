@@ -11,9 +11,7 @@ async function main() {
   const api3Pool = await Api3Pool.deploy(api3Token.address, inflationSchedule.address);
 
   await api3Pool.deployed();
-
   await api3Token.updateMinterStatus(api3Pool.address, true);
-  await api3Token.transfer(api3Pool.address, 1);
 
   console.log(api3Pool.address);
 }
