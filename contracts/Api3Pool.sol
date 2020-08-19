@@ -4,9 +4,10 @@ pragma solidity ^0.6.8;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IApi3Token.sol";
 import "./interfaces/IInflationSchedule.sol";
+import "./EpochUtils.sol";
 
 
-contract Api3Pool is Ownable {
+contract Api3Pool is EpochUtils, Ownable {
     IApi3Token public api3Token;
     IInflationSchedule public inflationSchedule;
 
@@ -15,8 +16,10 @@ contract Api3Pool is Ownable {
 
     constructor(
         address api3TokenAddress,
-        address inflationScheduleAddress
+        address inflationScheduleAddress,
+        uint256 epochPeriodInSeconds
         )
+        EpochUtils(epochPeriodInSeconds)
         public
         {
             api3Token = IApi3Token(api3TokenAddress);

@@ -8,7 +8,11 @@ async function main() {
   const inflationSchedule = await InflationSchedule.deploy();
 
   const Api3Pool = await ethers.getContractFactory("Api3Pool");
-  const api3Pool = await Api3Pool.deploy(api3Token.address, inflationSchedule.address);
+  const api3Pool = await Api3Pool.deploy(
+    api3Token.address,
+    inflationSchedule.address,
+    60 * 24 * 7
+    );
 
   await api3Pool.deployed();
   await api3Token.updateMinterStatus(api3Pool.address, true);
