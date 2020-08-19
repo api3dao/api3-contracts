@@ -55,4 +55,13 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
             });
         }
     }
+
+    function vest(bytes32 vestingId)
+        external
+    {
+        Vesting memory vesting = vestings[vestingId];
+        require(vesting.unlockTimestamp < now, "Too early to vest");
+        nonVestedBalances[vesting.staker] -= vesting.amount;
+        delete vestings[vestingId];
+    }
 }
