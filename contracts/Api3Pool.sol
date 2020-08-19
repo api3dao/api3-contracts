@@ -14,7 +14,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     }
   
     mapping(address => uint256) private balances;
-    mapping(address => uint256) private nonVestedBalances;
+    mapping(address => uint256) private lockedBalances;
     mapping(bytes32 => Vesting) private vestings;
     uint256 private noVestings;
 
@@ -43,7 +43,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         balances[beneficiary] += amount;
         if (unlockTimestamp != 0)
         {
-            nonVestedBalances[beneficiary] += amount;
+            lockedBalances[beneficiary] += amount;
             bytes32 vestingId = keccak256(abi.encodePacked(
                 noVestings++,
                 this
@@ -61,7 +61,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     {
         Vesting memory vesting = vestings[vestingId];
         require(vesting.unlockTimestamp < now, "Too early to vest");
-        nonVestedBalances[vesting.staker] -= vesting.amount;
+        lockedBalances[vesting.staker] -= vesting.amount;
         delete vestings[vestingId];
     }
 
@@ -72,7 +72,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         )
         external
     {
-        uint256 withdrawable = balances[staker] - nonVestedBalances[staker];
+        uint256 withdrawable = balances[staker] - lockedBalances[staker];
         require(withdrawable >= amount, "Not enough withdrawable funds");
         balances[staker] -= amount;
         api3Token.transferFrom(address(this), destination, amount);
