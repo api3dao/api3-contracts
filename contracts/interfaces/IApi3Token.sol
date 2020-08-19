@@ -18,4 +18,9 @@ interface IApi3Token is IERC20 {
         uint256 amount
         )
         external;
+
+    function getMinterStatus(address minterAddress)
+        external
+        view
+        returns(bool minterStatus);
 }

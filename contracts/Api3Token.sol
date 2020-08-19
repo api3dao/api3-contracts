@@ -39,9 +39,18 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         _mint(account, amount);
     }
 
+    function getMinterStatus(address minterAddress)
+        external
+        view
+        override
+        returns(bool minterStatus)
+    {
+        minterStatus = isMinter[minterAddress];
+    }
+
     modifier onlyMinter()
     {
-        require(isMinter[msg.sender], "Only minters are allowed to do this");
+        require(isMinter[msg.sender], "Only minters are allowed to mint");
         _;
     }
 }
