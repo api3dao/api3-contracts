@@ -7,8 +7,8 @@ import "./interfaces/IInflationSchedule.sol";
 
 
 contract Api3Pool is Ownable {
-    IApi3Token api3Token;
-    IInflationSchedule inflationSchedule;
+    IApi3Token public api3Token;
+    IInflationSchedule public inflationSchedule;
 
     mapping(address=>uint256) private reps;
     uint256 public totalRep = 1;
