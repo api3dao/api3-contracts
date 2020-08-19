@@ -16,17 +16,17 @@ contract InflationSchedule is IInflationSchedule {
             startEpoch = _startEpoch;
         }
 
-    function getDelta(uint256 indEpoch)
+    function getDeltaTokenSupply(uint256 currentEpoch)
         external
         view
         override
-        returns(uint256 delta)
+        returns(uint256 deltaTokenSupply)
     {
-        if (indEpoch < startEpoch)
+        if (currentEpoch < startEpoch)
         {
             return 0;
         }
-        uint256 passedEpochs = indEpoch - startEpoch;
-        delta = uint256(100000).sub(passedEpochs.mul(100)); // replace this with the actual schedule
+        uint256 deltaEpoch = currentEpoch - startEpoch;
+        deltaTokenSupply = uint256(100000).sub(deltaEpoch.mul(100)); // replace this with the actual schedule
     }
 }

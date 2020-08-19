@@ -3,8 +3,8 @@ pragma solidity ^0.6.8;
 
 
 interface IInflationSchedule {
-    function getDelta(uint256 indEpoch)
+    function getDeltaTokenSupply(uint256 currentEpoch)
         external
         view
-        returns(uint256 delta);
+        returns(uint256 deltaTokenSupply);
 }
