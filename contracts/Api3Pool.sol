@@ -12,7 +12,7 @@ contract Api3Pool is EpochUtils, Ownable {
     IInflationSchedule public inflationSchedule;
 
     // Total balances (staked, non-staked, vested, non-vested, etc.)
-    mapping(address => uint256) internal stakerBalances;
+    mapping(address => uint256) internal balances;
 
     constructor(
         address api3TokenAddress,
@@ -27,7 +27,7 @@ contract Api3Pool is EpochUtils, Ownable {
             inflationSchedule = IInflationSchedule(inflationScheduleAddress);
         }
     
-    function depositFunds(
+    function deposit(
         address source,
         uint256 amount,
         address beneficiary
