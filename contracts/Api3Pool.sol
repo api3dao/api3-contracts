@@ -64,4 +64,17 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         nonVestedBalances[vesting.staker] -= vesting.amount;
         delete vestings[vestingId];
     }
+
+    function withdraw(
+        address staker,
+        uint256 amount,
+        address destination
+        )
+        external
+    {
+        uint256 withdrawable = balances[staker] - nonVestedBalances[staker];
+        require(withdrawable >= amount, "Not enough withdrawable funds");
+        balances[staker] -= amount;
+        api3Token.transferFrom(address(this), destination, amount);
+    }
 }
