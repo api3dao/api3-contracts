@@ -66,12 +66,12 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     }
 
     function withdraw(
-        address staker,
         uint256 amount,
         address destination
         )
         external
     {
+        address staker = msg.sender;
         uint256 withdrawable = balances[staker] - lockedBalances[staker];
         require(withdrawable >= amount, "Not enough withdrawable funds");
         balances[staker] -= amount;
