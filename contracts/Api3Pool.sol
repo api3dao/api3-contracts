@@ -10,6 +10,9 @@ contract Api3Pool is Ownable {
     IApi3Token public api3Token;
     IInflationSchedule public inflationSchedule;
 
+    // Total balances (staked, non-staked, vested, non-vested, etc.)
+    mapping(address => uint256) internal stakerBalances;
+
     constructor(
         address api3TokenAddress,
         address inflationScheduleAddress
@@ -20,4 +23,23 @@ contract Api3Pool is Ownable {
             // Assign this contract as minter after deployment
             inflationSchedule = IInflationSchedule(inflationScheduleAddress);
         }
+    
+    function depositFunds(
+        address source,
+        uint256 amount,
+        address beneficiary
+        )
+        external
+    {
+        api3Token.transferFrom(source, address(this), amount);
+        stakerBalances[beneficiary] += amount;
+    }
+
+    function getStakerBalance(address stakerAddress)
+        external
+        view
+        returns(uint256 stakerBalance)
+    {
+        stakerBalance = stakerBalances[stakerAddress];
+    }
 }
