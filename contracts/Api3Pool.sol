@@ -15,6 +15,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
   
     mapping(address => uint256) private balances;
     mapping(address => uint256) private lockedBalances;
+    mapping(address => uint256) private stakes;
     mapping(address => mapping(uint256 => uint256)) private epochStakes;
     mapping(bytes32 => Vesting) private vestings;
     uint256 private noVestings;
@@ -73,8 +74,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         external
     {
         address staker = msg.sender;
-        uint256 currentEpochNumber = getCurrentEpochNumber();
-        uint256 withdrawable = balances[staker] - lockedBalances[staker] - epochStakes[staker][currentEpochNumber + 1];
+        uint256 withdrawable = balances[staker] - lockedBalances[staker] - stakes[staker];
         require(withdrawable >= amount, "Not enough withdrawable funds");
         balances[staker] -= amount;
         api3Token.transferFrom(address(this), destination, amount);
@@ -84,9 +84,10 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         external
     {
         address staker = msg.sender;
-        uint256 currentEpochNumber = getCurrentEpochNumber();
-        uint256 stakable = balances[staker] - epochStakes[staker][currentEpochNumber + 1];
+        uint256 stakable = balances[staker] - stakes[staker];
         require(stakable >= amount, "Not enough stakable funds");
-        epochStakes[staker][currentEpochNumber + 1] += amount;
+        stakes[staker] += amount;
+        uint256 currentEpochNumber = getCurrentEpochNumber();
+        epochStakes[staker][currentEpochNumber + 1] = stakes[staker];
     }
 }
