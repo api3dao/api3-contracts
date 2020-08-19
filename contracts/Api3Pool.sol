@@ -35,7 +35,7 @@ contract Api3Pool is EpochUtils, Ownable {
         external
     {
         api3Token.transferFrom(source, address(this), amount);
-        stakerBalances[beneficiary] += amount;
+        balances[beneficiary] += amount;
     }
 
     function getStakerBalance(address stakerAddress)
@@ -43,6 +43,6 @@ contract Api3Pool is EpochUtils, Ownable {
         view
         returns(uint256 stakerBalance)
     {
-        stakerBalance = stakerBalances[stakerAddress];
+        stakerBalance = balances[stakerAddress];
     }
 }
