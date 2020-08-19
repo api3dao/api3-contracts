@@ -25,6 +25,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         onlyOwner
     {
         isMinter[minterAddress] = minterStatus;
+        emit MinterStatusUpdated(minterAddress, minterStatus);
     }
 
     function mint(
