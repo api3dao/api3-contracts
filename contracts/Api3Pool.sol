@@ -32,12 +32,4 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         api3Token.transferFrom(source, address(this), amount);
         balances[beneficiary] += amount;
     }
-
-    function getStakerBalance(address stakerAddress)
-        external
-        view
-        returns(uint256 stakerBalance)
-    {
-        stakerBalance = balances[stakerAddress];
-    }
 }
