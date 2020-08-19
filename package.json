@@ -3,7 +3,8 @@
   "scripts": {
     "build": "buidler compile",
     "script": "buidler run scripts/script.js",
-    "test": "buidler test"
+    "test": "buidler test",
+    "lint": "solhint contracts/**/*.sol"
   },
   "devDependencies": {
     "@nomiclabs/buidler": "^1.4.2",
@@ -12,6 +13,7 @@
     "@openzeppelin/contracts": "^3.1.0",
     "chai": "^4.2.0",
     "ethereum-waffle": "^3.0.2",
-    "ethers": "^5.0.7"
+    "ethers": "^5.0.7",
+    "solhint": "^3.2.0"
   }
 }
