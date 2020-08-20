@@ -44,18 +44,21 @@ import "./EpochUtils.sol";
 /// ~~~IOU~~~
 /// A staker cannot withdraw/lock/stake an IOU. It's main use is to allow stakers 
 /// to lock/unlock funds while there is an active claim. See the two cases below:
-/// 1- There is a total of 1000 API3 locked, of which 100 belongs to a user.
-/// An insurance claim for 500 API3 is made. If the user wants to unlock tokens,
+/// 1- There is a total of 1000 API3 locked, of which 100 belongs to a staker.
+/// An insurance claim for 500 API3 is made. If the staker wants to unlock tokens,
 /// 50 of those tokens will be put into an IOU. The funds in the IOU can be
 /// released by the staker later through a transaction if the claim has been denied.
 /// (the staker cannot stake their 50 tokens kept in the IOU during the claims
 /// process which results in a slight loss for them)
 /// 2- There is a total of 1000 API3 locked and an insurance claim for 500
-/// API3 is made. A user locks 1000 API3 tokens after the claim is made. If the
-/// claim is paid out, this user will lose 250 tokens, which we don't want. To
+/// API3 is made. A staker locks 1000 API3 tokens after the claim is made. If the
+/// claim is paid out, this staker will lose 250 tokens, which we don't want. To
 /// prevent this, we allow them to lock their 1000 API tokens, but also give
 /// them a 250 token IOU that can be redeemed if the claim has been confirmed.
-/// Redeemed IOU's simply get added to the user's totalFunds.
+/// Note that in the second case, the IOU can't be in an absolute value (e.g.
+/// 250 tokens) because how much the staker will (undeservedly) lose will also
+/// depend on additional stakers locking tokens after them. Therefore, it
+/// should be in the form of "refund this staker for their loss from claim ID:X".
 
 /// We don't keep the vestings/IOUs of a staker in an array because handling
 /// that is too gas heavy. Instead, the staker needs to keep track of these
