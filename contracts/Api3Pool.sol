@@ -67,6 +67,11 @@ import "./EpochUtils.sol";
 /// they have matured. But this may be a problem to implement wrappers such as
 /// xToken.
 
+/// ~~~Pool shares~~~
+/// We don't keep absolute pooled values, but rather shares. This way, a claim can
+/// be paid out from totalPool without updating per-user variables, the token
+/// equivalence of shares decrease automatically.
+
 
 contract Api3Pool is InterfaceUtils, EpochUtils {
     struct Vesting
