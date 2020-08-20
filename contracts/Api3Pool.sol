@@ -48,6 +48,8 @@ import "./EpochUtils.sol";
 /// An insurance claim for 500 API3 is made. If the user wants to unlock tokens,
 /// 50 of those tokens will be put into an IOU. The funds in the IOU can be
 /// released by the staker later through a transaction if the claim has been denied.
+/// (the staker cannot stake their 50 tokens kept in the IOU during the claims
+/// process which results in a slight loss for them)
 /// 2- There is a total of 1000 API3 locked and an insurance claim for 500
 /// API3 is made. A user locks 1000 API3 tokens after the claim is made. If the
 /// claim is paid out, this user will lose 250 tokens, which we don't want. To
