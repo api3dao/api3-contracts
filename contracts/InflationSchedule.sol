@@ -52,22 +52,16 @@ contract InflationSchedule is IInflationSchedule {
         override
         returns(uint256 deltaTokenSupply)
     {
-        if (currentEpoch < startEpoch)
-        {
+        if (currentEpoch < startEpoch) {
             return 0;
-        }
-        else if (currentEpoch == startEpoch)
-        {
+        } else if (currentEpoch == startEpoch) {
             return INITIAL_WEEKLY_SUPPLY;
-        }
-        else if (currentEpoch < TERMINAL_EPOCH)
-        {
+        } else if (currentEpoch < TERMINAL_EPOCH) {
             // from: https://github.com/Synthetixio/synthetix/blob/master/contracts/SupplySchedule.sol#L117
             uint effectiveDecay = (SafeDecimalMath.unit().sub(DECAY_RATE)).powDecimal(currentEpoch - startEpoch);
             uint supplyForWeek = INITIAL_WEEKLY_SUPPLY.multiplyDecimal(effectiveDecay);
             return supplyForWeek;
-        } else
-        {
+        } else {
             uint terminalWeeklyRate = TERMINAL_SUPPLY_RATE_ANNUAL.div(52);
             uint supplyForWeek = totalSupply.multiplyDecimal(terminalWeeklyRate);
             return supplyForWeek;
