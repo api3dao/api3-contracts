@@ -43,7 +43,6 @@ contract InflationSchedule is IInflationSchedule {
             TERMINAL_EPOCH = uint8(startEpoch + 260); // terminal inflation rate begins after 5 years
         }
 
-
     function getDeltaTokenSupply(uint256 currentEpoch)
         external
         view
@@ -65,10 +64,4 @@ contract InflationSchedule is IInflationSchedule {
             return supplyForWeek;
         }
     }
-
-
-    /**
-     * @notice Emitted when API3 Token Proxy address is updated
-     * */
-    event API3TokenProxyUpdated(address newAddress);
 }
