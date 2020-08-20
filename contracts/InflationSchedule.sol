@@ -4,12 +4,9 @@ pragma solidity >=0.6.8;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./interfaces/IInflationSchedule.sol";
 import "./interfaces/IApi3Token.sol";
-import "./Math.sol";
 
 contract InflationSchedule is IInflationSchedule {
     using SafeMath for uint256;
-    using SafeDecimalMath for uint;
-    using Math for uint;
 
     IApi3Token public immutable api3Token;
     uint256 public startEpoch;
@@ -35,7 +32,9 @@ contract InflationSchedule is IInflationSchedule {
     uint256 public DECAY_PERIOD_IN_EPOCHS = 5 * 52;
 
     // Epoch/week number when terminal inflation rate begins to take effect
-    uint256 public TERMINAL_EPOCH;
+    uint256 public terminalEpoch;
+
+    uint256[] weeklySupplyCoeffs;
 
     constructor(
         address api3TokenAddress,
@@ -45,7 +44,13 @@ contract InflationSchedule is IInflationSchedule {
         {
             api3Token = IApi3Token(api3TokenAddress);
             startEpoch = _startEpoch;
-            TERMINAL_EPOCH = startEpoch + DECAY_PERIOD_IN_EPOCHS;
+            terminalEpoch = startEpoch + DECAY_PERIOD_IN_EPOCHS;
+            weeklySupplyCoeffs = new uint256[](DECAY_PERIOD_IN_EPOCHS);
+            weeklySupplyCoeffs[0] = 1000000000000000000;
+            for (uint256 indWeek = 1; indWeek < DECAY_PERIOD_IN_EPOCHS; indWeek++)
+            {
+                weeklySupplyCoeffs[indWeek] = weeklySupplyCoeffs[indWeek - 1].mul(WEEKLY_SUPPLY_UPDATE_COEFF).div(1000000000000000000);
+            }
         }
 
     function getDeltaTokenSupply(uint256 currentEpoch)
@@ -54,18 +59,18 @@ contract InflationSchedule is IInflationSchedule {
         override
         returns(uint256 deltaTokenSupply)
     {
-        if (currentEpoch < startEpoch) {
+        if (currentEpoch < startEpoch)
+        {
             return 0;
-        } else if (currentEpoch == startEpoch) {
-            return INITIAL_WEEKLY_SUPPLY;
-        } else if (currentEpoch < TERMINAL_EPOCH) {
-            // from: https://github.com/Synthetixio/synthetix/blob/master/contracts/SupplySchedule.sol#L117
-            uint effectiveDecay = (WEEKLY_SUPPLY_UPDATE_COEFF).powDecimal(currentEpoch - startEpoch);
-            uint supplyForWeek = INITIAL_WEEKLY_SUPPLY.multiplyDecimal(effectiveDecay);
-            return supplyForWeek;
-        } else {
-            uint supplyForWeek = api3Token.totalSupply().multiplyDecimal(TERMINAL_WEEKLY_SUPPLY_RATE);
-            return supplyForWeek;
+        }
+        else if (currentEpoch <= terminalEpoch)
+        {
+            uint256 indEpoch = currentEpoch - startEpoch;
+            return weeklySupplyCoeffs[indEpoch].mul(INITIAL_WEEKLY_SUPPLY).div(1000000000000000000);
+        }
+        else
+        {
+            return api3Token.totalSupply().mul(TERMINAL_WEEKLY_SUPPLY_RATE).div(1000000000000000000);
         }
     }
 }
