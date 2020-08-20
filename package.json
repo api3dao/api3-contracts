@@ -6,7 +6,8 @@
     "test": "buidler test",
     "lint": "npm run lint:solhint && npm run lint:eslint",
     "lint:solhint": "solhint \"contracts/**/*.sol\"",
-    "lint:eslint": "eslint . --ext .js"
+    "lint:eslint": "eslint . --ext .js",
+    "prettify": "prettier --write ./**/*.js"
   },
   "devDependencies": {
     "@nomiclabs/buidler": "^1.4.2",
@@ -17,6 +18,13 @@
     "eslint": "^7.7.0",
     "ethereum-waffle": "^3.0.2",
     "ethers": "^5.0.7",
+    "husky": "^4.2.5",
+    "prettier": "^2.0.5",
     "solhint": "^3.2.0"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run prettify && npm run lint"
+    }
   }
 }
