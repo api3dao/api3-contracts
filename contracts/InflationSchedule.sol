@@ -8,15 +8,10 @@ import "./interfaces/IApi3Token.sol";
 contract InflationSchedule is IInflationSchedule {
     using SafeMath for uint256;
 
-    IApi3Token public immutable api3Token;
-    uint256 public startEpoch;
-
-    /**
-      Initial annual inflation rate: 0.75
-      Initial weekly inflation rate: 0.75 / 52
-      Initial token supply (in Wei): 1e8 * 1e18 = 1e26
-      Initial weekly inflationary supply: 1e26 * 0.75 / 52 = 1442307692307692307692307
-    */
+    //  Initial annual inflation rate: 0.75
+    //  Initial weekly inflation rate: 0.75 / 52
+    //  Initial token supply (in Wei): 1e8 * 1e18 = 1e26
+    //  Initial weekly inflationary supply: 1e26 * 0.75 / 52 = 1442307692307692307692307
     uint256 public constant INITIAL_WEEKLY_SUPPLY = 1442307692307692307692307;
 
     // Weekly supply decay rate: 0.00965
@@ -29,12 +24,12 @@ contract InflationSchedule is IInflationSchedule {
     uint256 public constant TERMINAL_WEEKLY_SUPPLY_RATE = 480769230769230;
 
     // 5 years * 52 weeks/year = 260
-    uint256 public DECAY_PERIOD_IN_EPOCHS = 5 * 52;
+    uint256 public constant DECAY_PERIOD_IN_EPOCHS = 260;
 
-    // Epoch/week number when terminal inflation rate begins to take effect
-    uint256 public terminalEpoch;
-
-    uint256[] weeklySupplyCoeffs;
+    IApi3Token public immutable api3Token;
+    uint256[] public weeklySupplyCoeffs;
+    uint256 public immutable startEpoch;
+    uint256 public immutable terminalEpoch;
 
     constructor(
         address api3TokenAddress,
@@ -44,31 +39,34 @@ contract InflationSchedule is IInflationSchedule {
         {
             api3Token = IApi3Token(api3TokenAddress);
             startEpoch = _startEpoch;
-            terminalEpoch = startEpoch + DECAY_PERIOD_IN_EPOCHS;
+            terminalEpoch = _startEpoch + DECAY_PERIOD_IN_EPOCHS;
             weeklySupplyCoeffs = new uint256[](DECAY_PERIOD_IN_EPOCHS);
-            weeklySupplyCoeffs[0] = 1e18;
+            uint supplyCoeff = 1e18;
+            weeklySupplyCoeffs[0] = supplyCoeff;
+            // Costs ~6.2e6 gas for a 5 year decay period
             for (uint256 indWeek = 1; indWeek < DECAY_PERIOD_IN_EPOCHS; indWeek++)
             {
-                weeklySupplyCoeffs[indWeek] = weeklySupplyCoeffs[indWeek - 1]
+                supplyCoeff = supplyCoeff
                     .mul(WEEKLY_SUPPLY_UPDATE_COEFF)
                     .div(1e18);
+                weeklySupplyCoeffs[indWeek] = supplyCoeff;
             }
         }
 
-    function getDeltaTokenSupply(uint256 currentEpoch)
+    function getDeltaTokenSupply(uint256 indEpoch)
         external
         view
         override
         returns(uint256 deltaTokenSupply)
     {
-        if (currentEpoch < startEpoch)
+        if (indEpoch < startEpoch)
         {
             return 0;
         }
-        else if (currentEpoch <= terminalEpoch)
+        else if (indEpoch <= terminalEpoch)
         {
-            uint256 indEpoch = currentEpoch - startEpoch;
-            return weeklySupplyCoeffs[indEpoch]
+            uint256 indWeek = indEpoch - startEpoch;
+            return weeklySupplyCoeffs[indWeek]
                 .mul(INITIAL_WEEKLY_SUPPLY)
                 .div(1e18);
         }
