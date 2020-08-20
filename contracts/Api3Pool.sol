@@ -103,6 +103,6 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         uint256 currentEpochNumber = getCurrentEpochNumber();
         uint256 stakeable = lockedFunds[staker] - stakesPerEpoch[staker][currentEpochNumber + 1];
         require(stakeable >= amount, "Not enough stakeable funds");
-        stakesPerEpoch[staker][currentEpochNumber + 1] = lockedFunds[staker];
+        stakesPerEpoch[staker][currentEpochNumber + 1] += amount;
     }
 }
