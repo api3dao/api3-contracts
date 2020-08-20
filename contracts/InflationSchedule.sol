@@ -19,17 +19,19 @@ contract InflationSchedule is IInflationSchedule {
       Thus, the initial weekly inflationary supply is 75% / 52 * 100,000,000 API3.
       We have: 75e6 * SafeDecimalMath.unit() / 52 = 1442307692307692307692307
     */
-    uint public constant INITIAL_WEEKLY_SUPPLY = 1442307692307692307692307;
+    uint256 public constant INITIAL_WEEKLY_SUPPLY = 1442307692307692307692307;
 
     // Weekly percentage decay of inflationary supply from previous week
-    uint public constant DECAY_RATE = 9650000000000000; // 0.965% weekly
+    uint256 public constant DECAY_RATE = 9650000000000000; // 0.965% weekly
 
     // Percentage growth of terminal supply per annum
-    uint public constant TERMINAL_ANNUAL_SUPPLY_RATE = 25000000000000000; // 2.5%
+    uint256 public constant TERMINAL_ANNUAL_SUPPLY_RATE = 25000000000000000; // 2.5%
+
+    // 5 years * 52 weeks/year = 260
+    uint256 public DECAY_PERIOD_IN_EPOCHS = 260;
 
     // Epoch/week number when terminal inflation rate begins to take effect.
-    // 5 years * 52 weeks/year = 260
-    uint8 public TERMINAL_EPOCH = uint8(startEpoch + 260); // terminal inflation rate begins after 5 years
+    uint256 public TERMINAL_EPOCH;
 
     constructor(
         address api3TokenAddress,
@@ -39,8 +41,7 @@ contract InflationSchedule is IInflationSchedule {
         {
             api3Token = IApi3Token(api3TokenAddress);
             startEpoch = _startEpoch;
-            // 5 years * 52 weeks/year = 260
-            TERMINAL_EPOCH = uint8(startEpoch + 260); // terminal inflation rate begins after 5 years
+            TERMINAL_EPOCH = startEpoch + DECAY_PERIOD_IN_EPOCHS;
         }
 
     function getDeltaTokenSupply(uint256 currentEpoch)
