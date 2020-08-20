@@ -13,7 +13,7 @@ import "./EpochUtils.sol";
 
 /// The staker has to do the following to stake:
 /// 1- Call deposit() to deposit funds to the contract. Doing so does not
-/// provide any rewards, nor does it exposes the staker to collateral risk.
+/// provide any rewards, nor does it expose the staker to collateral risk.
 /// 2- Call lock() to lock funds. Doing so does not provide any rewards, yet
 /// it exposes the staker to collateral risk.
 /// 3- Call stake() to stake locked funds every epoch/week. Doing so provides
@@ -23,33 +23,34 @@ import "./EpochUtils.sol";
 
 /// The staker has to do the following to withdraw:
 /// 1- Call requestUnlock() to request to unlock funds (no need to specify the
-/// amount beforehand) unlockWaitingPeriod (default=2) epochs/weeks later. This
+/// amount beforehand) unlockWaitingPeriod (default=2) epochs later. This
 /// limit is to prevent stakers from front-running insurance claims (i.e.,
 /// withdraw as soon as there is a possibility for a claim to be made). Note that
-/// this request can only be done every unlockRequestCooldown (default=4) to
+/// this request can only be done every unlockRequestCooldown (default=4) epochs to
 /// prevent stakers from having an active unlock request at all times (which
 /// would allow them to withdraw anytime and defeat the whole purpose).
-/// 2- Exactly unlockWaitingPeriod epochs/weeks after the unlock request, call
+/// 2- Exactly unlockWaitingPeriod epochs after the unlock request, call
 /// unlock() with the amount they want to unlock.
 /// 3- Call withdraw() any time they want.
 
 /// The concept of vesting:
 /// A staker cannot withdraw a vesting before it is released, but can do
 /// everything else with it, including locking and staking. For now, there are
-/// three uses of vesting:
+/// three scenarios that use vesting:
 /// 1- Partners, investors, etc. receive tokens that will be vested after a time
-/// period.
+/// period
 /// 2- Staking rewards are vested after a time period
-/// 3- Say there is a total of 1000 API3 locked, and a user locked 100. An insurance
-/// claim for 500 API3 is made. If the user wants to unlock tokens, 50 of those
-/// tokens get locked into a vesting with an infinite release time. This vesting
-/// can be released by the staker later through a transaction (not implemented)
-/// if the claim has been denied.
+/// 3- Say there is a total of 1000 API3 locked, of which 100 belongs to a user.
+/// An insurance claim for 500 API3 is made. If the user wants to unlock tokens,
+/// 50 of those tokens will be put into a vesting with an infinite release time.
+/// This vesting can be released by the staker later through a transaction (not
+/// yet implemented) if the claim has been denied.
 
 /// We don't keep the vestings of a staker in an array because handling that is
 /// too gas heavy. Instead, the staker needs to keep track of their vestings
 /// through past events and refer to specific vesting IDs to release them when
-/// they have matured.
+/// they have matured. But this may be a problem to implement wrappers such as
+/// xToken.
 
 
 contract Api3Pool is InterfaceUtils, EpochUtils {
@@ -60,18 +61,19 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         uint256 vestTimestamp;
     }
   
+    // Total funds per staker
     mapping(address => uint256) private totalFunds;
-    // Includes initial vestings, inflationary rewards and potential insurance
-    // claim payments. Can be locked/unlocked and staked/unstaked.
+    // Funds that are not withdrawable due to not being vested
     mapping(address => uint256) private unvestedFunds;
-    // Funds locked to be staked. They are exposed to collateral risk even if
-    // they are not staked
+    // Funds that are locked to be staked
     mapping(address => uint256) private lockedFunds;
+    // The epoch when the last unlock request has been made
     mapping(address => uint256) private unlockRequestEpochs;
+    // How much a staker has staked for a particular epoch
     mapping(address => mapping(uint256 => uint256)) private stakesPerEpoch;
     mapping(bytes32 => Vesting) private vestings;
     uint256 private noVestings;
-    // Make these two updateable
+    // TODO: Make these two updateable
     uint256 private unlockRequestCooldown = 4; // in epochs
     uint256 private unlockWaitingPeriod = 2; // in epochs
 
@@ -153,8 +155,6 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     {
         address staker = msg.sender;
         uint256 currentEpochNumber = getCurrentEpochNumber();
-        // We want this so that stakers don't have unlock requests lined up for each
-        // epoch to be able to get out quickly if they need want
         require(
             unlockRequestEpochs[staker] + unlockRequestCooldown < currentEpochNumber,
             "Have to wait unlockRequestCooldown to request a new unlock"
