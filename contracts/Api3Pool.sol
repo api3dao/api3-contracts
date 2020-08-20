@@ -20,9 +20,13 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     // Funds locked to be staked. They are exposed to collateral risk even if
     // they are not staked
     mapping(address => uint256) private lockedFunds;
+    mapping(address => uint256) private unlockRequestEpochs;
     mapping(address => mapping(uint256 => uint256)) private stakesPerEpoch;
     mapping(bytes32 => Vesting) private vestings;
     uint256 private noVestings;
+    // Make these two updateable
+    uint256 private unlockRequestCooldown = 4; // in epochs
+    uint256 private unlockWaitingPeriod = 2; // in epochs
 
     constructor(
         address api3TokenAddress,
@@ -37,6 +41,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         public
         {}
     
+    // Should vesting be in timestamps or epochs?
     function deposit(
         address source,
         uint256 amount,
@@ -94,6 +99,44 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         uint256 lockable = totalFunds[staker] - lockedFunds[staker];
         require(lockable >= amount, "Not enough lockable funds");
         lockedFunds[staker] += amount;
+    }
+
+    function requestUnlock()
+        external
+    {
+        address staker = msg.sender;
+        uint256 currentEpochNumber = getCurrentEpochNumber();
+        // We want this so that stakers don't have unlock requests lined up for each
+        // epoch to be able to get out quickly if they need want
+        require(
+            unlockRequestEpochs[staker] + unlockRequestCooldown < currentEpochNumber,
+            "Have to wait unlockRequestCooldown to request a new unlock"
+            );
+        unlockRequestEpochs[staker] = currentEpochNumber;
+    }
+
+    // This doesn't take unlockWaitingPeriod changing after the unlock request
+    function unlock(uint256 amount)
+        external
+    {
+        address staker = msg.sender;
+        uint256 currentEpochNumber = getCurrentEpochNumber();
+        require(
+            unlockRequestEpochs[staker] + unlockWaitingPeriod == currentEpochNumber,
+            "Have to unlock unlockWaitingPeriod epochs after the request"
+            );
+        uint256 locked = lockedFunds[staker];
+        require(
+            locked >= amount,
+            "Not enough unlockable funds"
+        );
+        locked -= amount;
+        // In case the staker stakes and unlocks right after
+        if (stakesPerEpoch[staker][currentEpochNumber + 1] > locked)
+        {
+            stakesPerEpoch[staker][currentEpochNumber + 1] = locked;
+        }
+        lockedFunds[staker] = locked;
     }
 
     function stake(uint256 amount)
