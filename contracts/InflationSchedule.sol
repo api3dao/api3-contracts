@@ -15,22 +15,26 @@ contract InflationSchedule is IInflationSchedule {
     uint256 public startEpoch;
 
     /**
-      The initial inflation rate starts at 75% annual.
-      Thus, the initial weekly inflationary supply is 75% / 52 * 100,000,000 API3.
-      We have: 75e6 * SafeDecimalMath.unit() / 52 = 1442307692307692307692307
+      Initial annual inflation rate: 0.75
+      Initial weekly inflation rate: 0.75 / 52
+      Initial token supply (in Wei): 1e8 * 1e18 = 1e26
+      Initial weekly inflationary supply: 1e26 * 0.75 / 52 = 1442307692307692307692307
     */
     uint256 public constant INITIAL_WEEKLY_SUPPLY = 1442307692307692307692307;
 
-    // Weekly percentage decay of inflationary supply from previous week
-    uint256 public constant DECAY_RATE = 9650000000000000; // 0.965% weekly
+    // Weekly supply decay rate: 0.00965
+    // Weekly supply update coefficient: 1e18 * (1 - 0.00965) = 990350000000000000
+    uint256 public constant WEEKLY_SUPPLY_UPDATE_COEFF = 990350000000000000;
 
-    // Percentage growth of terminal supply per annum
-    uint256 public constant TERMINAL_ANNUAL_SUPPLY_RATE = 25000000000000000; // 2.5%
+    // Terminal annual inflation rate: 0.025
+    // Terminal weekly inflation rate: 0.025 / 52
+    // Terminal weekly inflationary supply rate: 1e18 * 0.025 / 52
+    uint256 public constant TERMINAL_WEEKLY_SUPPLY_RATE = 480769230769230;
 
     // 5 years * 52 weeks/year = 260
-    uint256 public DECAY_PERIOD_IN_EPOCHS = 260;
+    uint256 public DECAY_PERIOD_IN_EPOCHS = 5 * 52;
 
-    // Epoch/week number when terminal inflation rate begins to take effect.
+    // Epoch/week number when terminal inflation rate begins to take effect
     uint256 public TERMINAL_EPOCH;
 
     constructor(
@@ -56,12 +60,11 @@ contract InflationSchedule is IInflationSchedule {
             return INITIAL_WEEKLY_SUPPLY;
         } else if (currentEpoch < TERMINAL_EPOCH) {
             // from: https://github.com/Synthetixio/synthetix/blob/master/contracts/SupplySchedule.sol#L117
-            uint effectiveDecay = (SafeDecimalMath.unit().sub(DECAY_RATE)).powDecimal(currentEpoch - startEpoch);
+            uint effectiveDecay = (WEEKLY_SUPPLY_UPDATE_COEFF).powDecimal(currentEpoch - startEpoch);
             uint supplyForWeek = INITIAL_WEEKLY_SUPPLY.multiplyDecimal(effectiveDecay);
             return supplyForWeek;
         } else {
-            uint terminalWeeklyRate = TERMINAL_ANNUAL_SUPPLY_RATE.div(52);
-            uint supplyForWeek = api3Token.totalSupply().multiplyDecimal(terminalWeeklyRate);
+            uint supplyForWeek = api3Token.totalSupply().multiplyDecimal(TERMINAL_WEEKLY_SUPPLY_RATE);
             return supplyForWeek;
         }
     }
