@@ -67,7 +67,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     {
         address staker;
         uint256 amount;
-        uint256 vestTimestamp;
+        uint256 vestEpoch;
     }
   
     // Total funds per staker
@@ -99,18 +99,17 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         public
         {}
     
-    // Should vesting be in timestamps or epochs?
     function deposit(
         address source,
         uint256 amount,
         address beneficiary,
-        uint256 vestTimestamp
+        uint256 vestEpoch
         )
         external
     {
         api3Token.transferFrom(source, address(this), amount);
         totalFunds[beneficiary] += amount;
-        if (vestTimestamp != 0)
+        if (vestEpoch != 0)
         {
             unvestedFunds[beneficiary] += amount;
             bytes32 vestingId = keccak256(abi.encodePacked(
@@ -120,7 +119,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
             vestings[vestingId] = Vesting({
                 staker: beneficiary,
                 amount: amount,
-                vestTimestamp: vestTimestamp
+                vestEpoch: vestEpoch
             });
         }
     }
@@ -129,7 +128,8 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         external
     {
         Vesting memory vesting = vestings[vestingId];
-        require(vesting.vestTimestamp < now, "Too early to vest");
+        uint256 currentEpochNumber = getCurrentEpochNumber();
+        require(currentEpochNumber < vesting.vestEpoch, "Too early to vest");
         unvestedFunds[vesting.staker] -= vesting.amount;
         delete vestings[vestingId];
     }
