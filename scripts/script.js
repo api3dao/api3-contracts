@@ -5,7 +5,10 @@ async function main() {
   const api3Token = await Api3Token.deploy();
 
   const InflationSchedule = await ethers.getContractFactory("InflationSchedule");
-  const inflationSchedule = await InflationSchedule.deploy();
+  const inflationSchedule = await InflationSchedule.deploy(
+    api3Token.address,
+    1
+  );
 
   const Api3Pool = await ethers.getContractFactory("Api3Pool");
   const api3Pool = await Api3Pool.deploy(

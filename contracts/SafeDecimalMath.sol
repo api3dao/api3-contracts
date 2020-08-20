@@ -1,7 +1,8 @@
+//SPDX-License-Identifier: Unlicense
 pragma solidity >=0.5.16;
 
 // Libraries
-import "openzeppelin-solidity-2.3.0/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 
 // https://docs.synthetix.io/contracts/SafeDecimalMath

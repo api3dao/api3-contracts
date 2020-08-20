@@ -3,13 +3,16 @@ pragma solidity >=0.6.8;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./interfaces/IInflationSchedule.sol";
-import "./SafeDecimalMath.sol";
+import "./interfaces/IApi3Token.sol";
+import "./Math.sol";
 
 contract InflationSchedule is IInflationSchedule {
     using SafeMath for uint256;
+    using SafeDecimalMath for uint;
+    using Math for uint;
 
-    uint256 public immutable startEpoch;
-
+    IApi3Token public immutable api3Token;
+    uint256 public startEpoch;
 
     /**
       The initial inflation rate starts at 75% annual.
@@ -26,24 +29,19 @@ contract InflationSchedule is IInflationSchedule {
 
     // Epoch/week number when terminal inflation rate begins to take effect.
     // 5 years * 52 weeks/year = 260
-    uint8 public constant TERMINAL_EPOCH = startEpoch + 260; // terminal inflation rate begins after 5 years
+    uint8 public TERMINAL_EPOCH = uint8(startEpoch + 260); // terminal inflation rate begins after 5 years
 
-    constructor(uint256 _startEpoch)
+    constructor(
+        address api3TokenAddress,
+        uint256 _startEpoch
+        )
         public
         {
+            api3Token = IApi3Token(api3TokenAddress);
             startEpoch = _startEpoch;
+            // 5 years * 52 weeks/year = 260
+            TERMINAL_EPOCH = uint8(startEpoch + 260); // terminal inflation rate begins after 5 years
         }
-
-    /**
-     * @notice Set the API3TokenProxy.
-     * InflationSchedule requires the API3 token address since we need to know total supply
-     * in order to compute terminal weekly token emissions. 
-     * */
-    function setAPI3Proxy(IApi3Token _API3TokenProxy) external onlyOwner {
-        require(address(_API3TokenProxy) != address(0), "Address cannot be 0");
-        API3TokenProxy = address(uint160(address(_API3TokenProxy)));
-        emit API3TokenProxyUpdated(API3TokenProxy);
-    }
 
 
     function getDeltaTokenSupply(uint256 currentEpoch)
@@ -62,8 +60,8 @@ contract InflationSchedule is IInflationSchedule {
             uint supplyForWeek = INITIAL_WEEKLY_SUPPLY.multiplyDecimal(effectiveDecay);
             return supplyForWeek;
         } else {
-            uint terminalWeeklyRate = TERMINAL_SUPPLY_RATE_ANNUAL.div(52);
-            uint supplyForWeek = totalSupply.multiplyDecimal(terminalWeeklyRate);
+            uint terminalWeeklyRate = TERMINAL_ANNUAL_SUPPLY_RATE.div(52);
+            uint supplyForWeek = api3Token.totalSupply().multiplyDecimal(terminalWeeklyRate);
             return supplyForWeek;
         }
     }
