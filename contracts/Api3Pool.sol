@@ -75,8 +75,8 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         uint256 vestEpoch;
     }
   
-    // Total funds per staker
-    mapping(address => uint256) private totalFunds;
+    // Staker balances
+    mapping(address => uint256) private balances;
     // Funds that are not withdrawable due to not being vested
     mapping(address => uint256) private unvestedFunds;
     // Funds that are locked to be staked
@@ -113,7 +113,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         external
     {
         api3Token.transferFrom(source, address(this), amount);
-        totalFunds[beneficiary] += amount;
+        balances[beneficiary] += amount;
         if (vestEpoch != 0)
         {
             unvestedFunds[beneficiary] += amount;
@@ -149,9 +149,9 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         uint256 unvested = unvestedFunds[staker];
         uint256 locked = lockedFunds[staker];
         uint256 nonWithdrawable = unvested > locked ? unvested: locked;
-        uint256 withdrawable = totalFunds[staker] -= nonWithdrawable;
+        uint256 withdrawable = balances[staker] -= nonWithdrawable;
         require(withdrawable >= amount, "Not enough withdrawable funds");
-        totalFunds[staker] -= amount;
+        balances[staker] -= amount;
         api3Token.transferFrom(address(this), destination, amount);
     }
 
@@ -159,7 +159,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         external
     {
         address staker = msg.sender;
-        uint256 lockable = totalFunds[staker] - lockedFunds[staker];
+        uint256 lockable = balances[staker] - lockedFunds[staker];
         require(lockable >= amount, "Not enough lockable funds");
         lockedFunds[staker] += amount;
     }
