@@ -4,7 +4,7 @@
     "build": "buidler compile",
     "script": "buidler run scripts/script.js",
     "test": "buidler test",
-    "lint": "solhint contracts/**/*.sol"
+    "lint": "solhint \"contracts/**/*.sol\""
   },
   "devDependencies": {
     "@nomiclabs/buidler": "^1.4.2",

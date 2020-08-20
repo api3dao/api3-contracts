@@ -46,10 +46,12 @@ contract InflationSchedule is IInflationSchedule {
             startEpoch = _startEpoch;
             terminalEpoch = startEpoch + DECAY_PERIOD_IN_EPOCHS;
             weeklySupplyCoeffs = new uint256[](DECAY_PERIOD_IN_EPOCHS);
-            weeklySupplyCoeffs[0] = 1000000000000000000;
+            weeklySupplyCoeffs[0] = 1e18;
             for (uint256 indWeek = 1; indWeek < DECAY_PERIOD_IN_EPOCHS; indWeek++)
             {
-                weeklySupplyCoeffs[indWeek] = weeklySupplyCoeffs[indWeek - 1].mul(WEEKLY_SUPPLY_UPDATE_COEFF).div(1000000000000000000);
+                weeklySupplyCoeffs[indWeek] = weeklySupplyCoeffs[indWeek - 1]
+                    .mul(WEEKLY_SUPPLY_UPDATE_COEFF)
+                    .div(1e18);
             }
         }
 
@@ -66,11 +68,15 @@ contract InflationSchedule is IInflationSchedule {
         else if (currentEpoch <= terminalEpoch)
         {
             uint256 indEpoch = currentEpoch - startEpoch;
-            return weeklySupplyCoeffs[indEpoch].mul(INITIAL_WEEKLY_SUPPLY).div(1000000000000000000);
+            return weeklySupplyCoeffs[indEpoch]
+                .mul(INITIAL_WEEKLY_SUPPLY)
+                .div(1e18);
         }
         else
         {
-            return api3Token.totalSupply().mul(TERMINAL_WEEKLY_SUPPLY_RATE).div(1000000000000000000);
+            return api3Token.totalSupply()
+                .mul(TERMINAL_WEEKLY_SUPPLY_RATE)
+                .div(1e18);
         }
     }
 }
