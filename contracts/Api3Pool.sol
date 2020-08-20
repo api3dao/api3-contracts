@@ -20,7 +20,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     // Funds locked to be staked. They are exposed to collateral risk even if
     // they are not staked
     mapping(address => uint256) private lockedFunds;
-    mapping(address => mapping(uint256 => uint256)) private epochStakes;
+    mapping(address => mapping(uint256 => uint256)) private stakesPerEpoch;
     mapping(bytes32 => Vesting) private vestings;
     uint256 private noVestings;
 
@@ -101,8 +101,8 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     {
         address staker = msg.sender;
         uint256 currentEpochNumber = getCurrentEpochNumber();
-        uint256 stakeable = lockedFunds[staker] - epochStakes[staker][currentEpochNumber + 1];
+        uint256 stakeable = lockedFunds[staker] - stakesPerEpoch[staker][currentEpochNumber + 1];
         require(stakeable >= amount, "Not enough stakeable funds");
-        epochStakes[staker][currentEpochNumber + 1] = lockedFunds[staker];
+        stakesPerEpoch[staker][currentEpochNumber + 1] = lockedFunds[staker];
     }
 }
