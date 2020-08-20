@@ -4,6 +4,53 @@ pragma solidity ^0.6.8;
 import "./InterfaceUtils.sol";
 import "./EpochUtils.sol";
 
+/// Terminology
+/// Staker: All users are referred to as stakers, even if they don't have
+/// actively staked funds.
+/// Epoch: The period that is used to quantize time. The default value of an
+/// epoch is a week. This means that stakers need to renew their stakes each
+/// week with a transaction.
+
+/// The staker has to do the following to stake:
+/// 1- Call deposit() to deposit funds to the contract. Doing so does not
+/// provide any rewards, nor does it exposes the staker to collateral risk.
+/// 2- Call lock() to lock funds. Doing so does not provide any rewards, yet
+/// it exposes the staker to collateral risk.
+/// 3- Call stake() to stake locked funds every epoch/week. Doing so provides
+/// staking rewards and governance rights in the next epoch/week.
+/// Therefore, if a staker has any locked funds, it is in their best interest
+/// to stake them.
+
+/// The staker has to do the following to withdraw:
+/// 1- Call requestUnlock() to request to unlock funds (no need to specify the
+/// amount beforehand) unlockWaitingPeriod (default=2) epochs/weeks later. This
+/// limit is to prevent stakers from front-running insurance claims (i.e.,
+/// withdraw as soon as there is a possibility for a claim to be made). Note that
+/// this request can only be done every unlockRequestCooldown (default=4) to
+/// prevent stakers from having an active unlock request at all times (which
+/// would allow them to withdraw anytime and defeat the whole purpose).
+/// 2- Exactly unlockWaitingPeriod epochs/weeks after the unlock request, call
+/// unlock() with the amount they want to unlock.
+/// 3- Call withdraw() any time they want.
+
+/// The concept of vesting:
+/// A staker cannot withdraw a vesting before it is released, but can do
+/// everything else with it, including locking and staking. For now, there are
+/// three uses of vesting:
+/// 1- Partners, investors, etc. receive tokens that will be vested after a time
+/// period.
+/// 2- Staking rewards are vested after a time period
+/// 3- Say there is a total of 1000 API3 locked, and a user locked 100. An insurance
+/// claim for 500 API3 is made. If the user wants to unlock tokens, 50 of those
+/// tokens get locked into a vesting with an infinite release time. This vesting
+/// can be released by the staker later through a transaction (not implemented)
+/// if the claim has been denied.
+
+/// We don't keep the vestings of a staker in an array because handling that is
+/// too gas heavy. Instead, the staker needs to keep track of their vestings
+/// through past events and refer to specific vesting IDs to release them when
+/// they have matured.
+
 
 contract Api3Pool is InterfaceUtils, EpochUtils {
     struct Vesting
