@@ -33,22 +33,31 @@ import "./EpochUtils.sol";
 /// unlock() with the amount they want to unlock.
 /// 3- Call withdraw() any time they want.
 
-/// The concept of vesting:
+/// ~~~Vesting~~~
 /// A staker cannot withdraw a vesting before it is released, but can do
 /// everything else with it, including locking and staking. For now, there are
-/// three scenarios that use vesting:
+/// two scenarios that use vesting:
 /// 1- Partners, investors, etc. receive tokens that will be vested after a time
 /// period
 /// 2- Staking rewards are vested after a time period
-/// 3- Say there is a total of 1000 API3 locked, of which 100 belongs to a user.
-/// An insurance claim for 500 API3 is made. If the user wants to unlock tokens,
-/// 50 of those tokens will be put into a vesting with an infinite release time.
-/// This vesting can be released by the staker later through a transaction (not
-/// yet implemented) if the claim has been denied.
 
-/// We don't keep the vestings of a staker in an array because handling that is
-/// too gas heavy. Instead, the staker needs to keep track of their vestings
-/// through past events and refer to specific vesting IDs to release them when
+/// ~~~IOU~~~
+/// A staker cannot withdraw/lock/stake an IOU. It's main use is to allow stakers 
+/// to lock/unlock funds while there is an active claim. See the two cases below:
+/// 1- There is a total of 1000 API3 locked, of which 100 belongs to a user.
+/// An insurance claim for 500 API3 is made. If the user wants to unlock tokens,
+/// 50 of those tokens will be put into an IOU. The funds in the IOU can be
+/// released by the staker later through a transaction if the claim has been denied.
+/// 2- There is a total of 1000 API3 locked and an insurance claim for 500
+/// API3 is made. A user locks 1000 API3 tokens after the claim is made. If the
+/// claim is paid out, this user will lose 250 tokens, which we don't want. To
+/// prevent this, we allow them to lock their 1000 API tokens, but also give
+/// them a 250 token IOU that can be redeemed if the claim has been confirmed.
+/// Redeemed IOU's simply get added to the user's totalFunds.
+
+/// We don't keep the vestings/IOUs of a staker in an array because handling
+/// that is too gas heavy. Instead, the staker needs to keep track of these
+/// through past events and refer to specific IDs to release them when
 /// they have matured. But this may be a problem to implement wrappers such as
 /// xToken.
 
