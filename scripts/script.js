@@ -1,4 +1,4 @@
-const bre = require("@nomiclabs/buidler");
+/* global ethers */
 
 async function main() {
   const Api3Token = await ethers.getContractFactory("Api3Token");

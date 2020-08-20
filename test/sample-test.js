@@ -1,4 +1,4 @@
-const { expect } = require("chai");
+const { describe, it, expect } = require("chai");
 
 describe("Api3Token", function() {
   it("works", async function() {
