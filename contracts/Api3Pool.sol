@@ -176,7 +176,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         unlockRequestEpochs[staker] = currentEpochNumber;
     }
 
-    // This doesn't take unlockWaitingPeriod changing after the unlock request
+    // This doesn't take unlockWaitingPeriod changing after the unlock request into account
     function unlock(uint256 amount)
         external
     {
