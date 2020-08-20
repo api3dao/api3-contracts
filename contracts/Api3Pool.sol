@@ -70,7 +70,7 @@ import "./EpochUtils.sol";
 /// ~~~Pool shares~~~
 /// We don't keep absolute pooled values, but rather shares. This way, a claim can
 /// be paid out from totalPool without updating per-user variables, the token
-/// equivalence of shares decrease automatically.
+/// equivalence of shares decreases automatically.
 
 
 contract Api3Pool is InterfaceUtils, EpochUtils {
