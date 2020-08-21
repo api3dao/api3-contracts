@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 contract EpochUtils {
     using SafeMath for uint256;
 
-    uint256 public epochPeriodInSeconds;
-    uint256 public firstEpochStartTimestamp;
+    uint256 public immutable epochPeriodInSeconds;
+    uint256 public immutable firstEpochStartTimestamp;
 
     constructor(uint256 _epochPeriodInSeconds)
         public
