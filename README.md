@@ -66,7 +66,7 @@ This method will read from `stakesPerEpoch` in this contract.
 
 ## How to withdraw staked/pooled funds?
 
-1. Call `requestUnpool()` to request to unpool funds (no need to specify the amount beforehand) `unpoolWaitingPeriod` epochs (default=2, governable) later.
+1. Call `requestToUnpool()` to request to unpool funds (no need to specify the amount beforehand) `unpoolWaitingPeriod` epochs (default=2, governable) later.
 This limit is to prevent users from front-running insurance claims (i.e., withdraw as soon as there is a possibility for a claim to be made).
 Note that this request can only be done every `unpoolRequestCooldown` epochs (default=4, governable) to prevent users from having an active unpool request at all times (which would allow them to withdraw anytime and defeat the purpose).
 
@@ -128,4 +128,4 @@ In the final version, the user should be able to deposit&pool&stake, or stake&co
 
 The user should be able to delegate staking renewals and voting power trustlessly to third parties through contracts that wrap this one.
 The final version will be adjusted to allow this.
-We will get help from Michael (of xToken) about what exactly is needed for this.
+We will get help from Michael (of xToken) about what exactly is needed for this (e.g., avoiding reverts).
