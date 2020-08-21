@@ -103,8 +103,10 @@ Both cases have trivial solutions:
 
 Neither of these are acceptable.
 Instead, we utilize IOUs:
-1. The user withdraws 250 tokens, and receives an IOU for 250 tokens that is redeemable if/when the respective claim is denied.
-2. The user pools their 1000 tokens, and receives an IOU for X tokens that is redeemable if/when the respective claim is accepted.
+1. **Type-1**:
+The user withdraws 250 tokens, and receives an IOU for 250 tokens that is redeemable if/when the respective claim is denied.
+1. **Type-2**:
+The user pools their 1000 tokens, and receives an IOU for X tokens that is redeemable if/when the respective claim is accepted.
 
 X = The amount of tokens corresponding to pool shares effectively lost during the claim payout.
 In other words, the amount that this IOU pays back is kept in pool shares rather than tokens.
