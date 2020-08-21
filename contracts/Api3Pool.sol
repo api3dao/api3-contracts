@@ -178,15 +178,24 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     {
         uint256 currentEpochNumber = getCurrentEpochNumber();
         uint256 previousEpochNumber = currentEpochNumber.sub(1);
+        uint256 twoPreviousEpochNumber = currentEpochNumber.sub(2);
         uint256 totalStakesInPreviousEpoch = totalStakesPerEpoch[previousEpochNumber];
         uint256 stakeInPreviousEpoch = stakesPerEpoch[userAddress][previousEpochNumber];
 
+        // Carry over rewards from two epochs ago
+        vestedRewardsPerEpoch[previousEpochNumber] = vestedRewardsPerEpoch[previousEpochNumber]
+            .add(vestedRewardsPerEpoch[twoPreviousEpochNumber]);
+        vestedRewardsPerEpoch[twoPreviousEpochNumber] = 0;
         uint256 vestedRewards = vestedRewardsPerEpoch[previousEpochNumber]
             .mul(totalStakesInPreviousEpoch)
             .div(stakeInPreviousEpoch);
         balances[userAddress] = balances[userAddress].add(vestedRewards);
         createVesting(userAddress, vestedRewards, currentEpochNumber.add(rewardVestingPeriod));
         
+        // Carry over rewards from two epochs ago
+        rewardsPerEpoch[previousEpochNumber] = rewardsPerEpoch[previousEpochNumber]
+            .add(rewardsPerEpoch[twoPreviousEpochNumber]);
+        rewardsPerEpoch[twoPreviousEpochNumber] = 0;
         uint256 rewards = rewardsPerEpoch[previousEpochNumber]
             .mul(totalStakesInPreviousEpoch)
             .div(stakeInPreviousEpoch);
@@ -211,6 +220,27 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
                 amount: amount,
                 epoch: vestingEpoch
             });
+    }
+
+    // Should we allow reward payments to specify the epoch?
+    function payVestedRewards(
+        address sourceAddress,
+        uint256 amount
+        )
+        external
+    {
+        api3Token.transferFrom(sourceAddress, address(this), amount);
+        vestedRewardsPerEpoch[getCurrentEpochNumber()].add(amount);
+    }
+
+    function payRewards(
+        address sourceAddress,
+        uint256 amount
+        )
+        external
+    {
+        api3Token.transferFrom(sourceAddress, address(this), amount);
+        rewardsPerEpoch[getCurrentEpochNumber()].add(amount);
     }
 
     function getPooledFundsOfUser(address userAddress)
