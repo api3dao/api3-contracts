@@ -80,7 +80,7 @@ This will allow users with non-vested funds to unpool and withdraw in the same e
 ## What are vestings for?
 
 1. Partners, investors, etc. receive tokens that will be vested after a time period
-2. Inflationary staking rewards are vested after `inflationVestingPeriod` (default=52, governable)
+2. Inflationary staking rewards are vested after `rewardVestingPeriod` (default=52, governable)
 
 ## What are IOUs for?
 
