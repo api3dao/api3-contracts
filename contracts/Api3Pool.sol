@@ -8,25 +8,26 @@ import "./EpochUtils.sol";
 contract Api3Pool is InterfaceUtils, EpochUtils {
     struct Vesting
     {
-        address staker;
+        address userAddress;
         uint256 amount;
-        uint256 vestEpoch;
+        uint256 epoch;
     }
   
-    // Staker balances
+    // User balances
     mapping(address => uint256) private balances;
     // Funds that are not withdrawable due to not being vested
     mapping(address => uint256) private unvestedFunds;
-    uint256 private totalPool;
+    uint256 private totalPoolFunds;
     // Funds that are pooled to be staked
     uint256 private totalPoolShares;
     mapping(address => uint256) private poolShares;
     // The epoch when the last unpool request has been made
     mapping(address => uint256) private unpoolRequestEpochs;
-    // How much a staker has staked for a particular epoch
+    // The shares that users have staked for epochs
     mapping(address => mapping(uint256 => uint256)) private stakesPerEpoch;
     mapping(bytes32 => Vesting) private vestings;
     uint256 private noVestings;
+
     // TODO: Make these two updateable
     uint256 private unpoolRequestCooldown = 4; // in epochs
     uint256 private unpoolWaitingPeriod = 2; // in epochs
@@ -45,26 +46,26 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         {}
     
     function deposit(
-        address source,
+        address sourceAddress,
         uint256 amount,
-        address beneficiary,
-        uint256 vestEpoch
+        address userAddress,
+        uint256 vestingEpoch
         )
         external
     {
-        api3Token.transferFrom(source, address(this), amount);
-        balances[beneficiary] += amount;
-        if (vestEpoch != 0)
+        api3Token.transferFrom(sourceAddress, address(this), amount);
+        balances[userAddress] = balances[userAddress].add(amount);
+        if (vestingEpoch != 0)
         {
-            unvestedFunds[beneficiary] += amount;
+            unvestedFunds[userAddress] = unvestedFunds[userAddress].add(amount);
             bytes32 vestingId = keccak256(abi.encodePacked(
                 noVestings++,
                 this
                 ));
             vestings[vestingId] = Vesting({
-                staker: beneficiary,
+                userAddress: userAddress,
                 amount: amount,
-                vestEpoch: vestEpoch
+                epoch: vestingEpoch
             });
         }
     }
@@ -73,94 +74,96 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         external
     {
         Vesting memory vesting = vestings[vestingId];
-        uint256 currentEpochNumber = getCurrentEpochNumber();
-        require(currentEpochNumber < vesting.vestEpoch, "Too early to vest");
-        unvestedFunds[vesting.staker] -= vesting.amount;
+        require(getCurrentEpochNumber() < vesting.epoch, "Too early to vest");
+        unvestedFunds[vesting.userAddress] = unvestedFunds[vesting.userAddress].sub(vesting.amount);
         delete vestings[vestingId];
     }
 
     function withdraw(
         uint256 amount,
-        address destination
+        address destinationAddress
         )
         external
     {
-        address staker = msg.sender;
-        uint256 unvested = unvestedFunds[staker];
-        uint256 pooled = getPooledFunds(staker);
+        address userAddress = msg.sender;
+        uint256 unvested = unvestedFunds[userAddress];
+        uint256 pooled = getPooledFunds(userAddress);
         uint256 nonWithdrawable = unvested > pooled ? unvested: pooled;
-        uint256 withdrawable = balances[staker] -= nonWithdrawable;
+        uint256 balance = balances[userAddress];
+        uint256 withdrawable = balance.sub(nonWithdrawable);
         require(withdrawable >= amount, "Not enough withdrawable funds");
-        balances[staker] -= amount;
-        api3Token.transferFrom(address(this), destination, amount);
+        balances[userAddress] = balance.sub(amount);
+        api3Token.transferFrom(address(this), destinationAddress, amount);
     }
 
     function pool(uint256 amount)
         external
     {
-        address staker = msg.sender;
-        uint256 poolable = balances[staker] - getPooledFunds(staker);
+        address userAddress = msg.sender;
+        uint256 poolable = balances[userAddress].sub(getPooledFunds(userAddress));
         require(poolable >= amount, "Not enough poolable funds");
-        uint256 poolShare = totalPoolShares.mul(amount).div(totalPool);
-        poolShares[staker] += poolShare;
-        totalPoolShares += poolShare;
-        totalPool += amount;
+        uint256 poolShare = totalPoolShares.mul(amount).div(totalPoolFunds);
+        poolShares[userAddress] = poolShares[userAddress].add(poolShare);
+        totalPoolShares = totalPoolShares.add(poolShare);
+        totalPoolFunds = totalPoolFunds.add(amount);
     }
 
     function requestUnpool()
         external
     {
-        address staker = msg.sender;
+        address userAddress = msg.sender;
         uint256 currentEpochNumber = getCurrentEpochNumber();
         require(
-            unpoolRequestEpochs[staker] + unpoolRequestCooldown < currentEpochNumber,
+            unpoolRequestEpochs[userAddress].add(unpoolRequestCooldown) <= currentEpochNumber,
             "Have to wait unpoolRequestCooldown to request a new unpool"
             );
-        unpoolRequestEpochs[staker] = currentEpochNumber;
+        unpoolRequestEpochs[userAddress] = currentEpochNumber;
     }
 
     // This doesn't take unpoolWaitingPeriod changing after the unpool request into account
     function unpool(uint256 amount)
         external
     {
-        address staker = msg.sender;
+        address userAddress = msg.sender;
         uint256 currentEpochNumber = getCurrentEpochNumber();
         require(
-            unpoolRequestEpochs[staker] + unpoolWaitingPeriod == currentEpochNumber,
+            unpoolRequestEpochs[userAddress].add(unpoolWaitingPeriod) == currentEpochNumber,
             "Have to unpool unpoolWaitingPeriod epochs after the request"
             );
-        uint256 pooled = getPooledFunds(staker);
+        uint256 pooled = getPooledFunds(userAddress);
         require(
             pooled >= amount,
             "Not enough unpoolable funds"
         );
-        pooled -= amount;
-        // In case the staker stakes and unpools right after
-        if (stakesPerEpoch[staker][currentEpochNumber + 1] > pooled)
+        pooled = pooled.sub(amount);
+        // In case the user stakes and unpools right after
+        if (stakesPerEpoch[userAddress][currentEpochNumber + 1] > pooled)
         {
-            stakesPerEpoch[staker][currentEpochNumber + 1] = pooled;
+            stakesPerEpoch[userAddress][currentEpochNumber + 1] = pooled;
         }
-        uint256 poolShare = totalPoolShares.mul(amount).div(totalPool);
-        poolShares[staker] -= poolShare;
-        totalPoolShares -= poolShare;
-        totalPool -= amount;
+        uint256 poolShare = totalPoolShares.mul(amount).div(totalPoolFunds);
+        poolShares[userAddress] = poolShares[userAddress].sub(poolShare);
+        totalPoolShares = totalPoolShares.sub(poolShare);
+        totalPoolFunds = totalPoolFunds.sub(amount);
     }
 
+    // Allow anyone to call this on behalf of the user?
     function stake(uint256 amount)
         external
     {
-        address staker = msg.sender;
+        address userAddress = msg.sender;
         uint256 currentEpochNumber = getCurrentEpochNumber();
-        uint256 stakeable = getPooledFunds(staker) - stakesPerEpoch[staker][currentEpochNumber + 1];
+        uint256 currentStaked = stakesPerEpoch[userAddress][currentEpochNumber + 1];
+        uint256 stakeable = getPooledFunds(userAddress).sub(currentStaked);
         require(stakeable >= amount, "Not enough stakeable funds");
-        stakesPerEpoch[staker][currentEpochNumber + 1] += amount;
+        stakesPerEpoch[userAddress][currentEpochNumber + 1] = currentStaked.add(amount);
     }
 
-    function getPooledFunds(address stakerAddress)
+    function getPooledFunds(address userAddress)
         internal
         view
         returns(uint256 pooledFunds)
     {
-        pooledFunds = totalPoolShares.mul(totalPool).div(poolShares[stakerAddress]);
+        pooledFunds = totalPoolShares.mul(totalPoolFunds).div(poolShares[userAddress]);
     }
 }
