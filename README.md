@@ -61,6 +61,8 @@ The reward amounts will be proportional to the pool shares the user has staked t
 ## How to receive voting power?
 
 The user will automatically receive voting power proportional to the pool shares they have staked in the previous epoch.
+The DAO reads from a `balanceOfAt(address, blockNumber)` method to get the voting power of an address for a particular proposal.
+This method will read from `stakesPerEpoch` in this contract.
 
 ## How to withdraw staked/pooled funds?
 
