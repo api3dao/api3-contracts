@@ -229,8 +229,9 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         )
         external
     {
+        uint256 currentEpochNumber = getCurrentEpochNumber();
+        vestedRewardsPerEpoch[currentEpochNumber] = vestedRewardsPerEpoch[currentEpochNumber].add(amount);
         api3Token.transferFrom(sourceAddress, address(this), amount);
-        vestedRewardsPerEpoch[getCurrentEpochNumber()].add(amount);
     }
 
     function payRewards(
@@ -239,8 +240,9 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         )
         external
     {
+        uint256 currentEpochNumber = getCurrentEpochNumber();
+        rewardsPerEpoch[currentEpochNumber] = rewardsPerEpoch[currentEpochNumber].add(amount);
         api3Token.transferFrom(sourceAddress, address(this), amount);
-        rewardsPerEpoch[getCurrentEpochNumber()].add(amount);
     }
 
     function getPooledFundsOfUser(address userAddress)
