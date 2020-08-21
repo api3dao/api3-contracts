@@ -103,7 +103,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     {
         address userAddress = msg.sender;
         uint256 unvested = unvestedFunds[userAddress];
-        uint256 pooled = getPooledFunds(userAddress);
+        uint256 pooled = getPooledFundsOfUser(userAddress);
         uint256 nonWithdrawable = unvested > pooled ? unvested: pooled;
         uint256 balance = balances[userAddress];
         uint256 withdrawable = balance.sub(nonWithdrawable);
@@ -116,9 +116,9 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         external
     {
         address userAddress = msg.sender;
-        uint256 poolable = balances[userAddress].sub(getPooledFunds(userAddress));
+        uint256 poolable = balances[userAddress].sub(getPooledFundsOfUser(userAddress));
         require(poolable >= amount, "Not enough poolable funds");
-        uint256 poolShare = totalPoolShares.mul(amount).div(totalPoolFunds);
+        uint256 poolShare = convertFundsToShares(amount);
         poolShares[userAddress] = poolShares[userAddress].add(poolShare);
         totalPoolShares = totalPoolShares.add(poolShare);
         totalPoolFunds = totalPoolFunds.add(amount);
@@ -151,7 +151,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
             unpoolRequestEpochs[userAddress].add(unpoolWaitingPeriod) == currentEpochNumber,
             "Have to unpool unpoolWaitingPeriod epochs after the request"
             );
-        uint256 pooled = getPooledFunds(userAddress);
+        uint256 pooled = getPooledFundsOfUser(userAddress);
         require(
             pooled >= amount,
             "Not enough unpoolable funds"
@@ -166,29 +166,26 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
                 .sub(staked.sub(pooled));
             stakesPerEpoch[userAddress][nextEpochNumber] = pooled;
         }
-        uint256 poolShare = totalPoolShares.mul(amount).div(totalPoolFunds);
+        uint256 poolShare = convertFundsToShares(amount);
         poolShares[userAddress] = poolShares[userAddress].sub(poolShare);
         totalPoolShares = totalPoolShares.sub(poolShare);
         totalPoolFunds = totalPoolFunds.sub(amount);
     }
 
-    // Should we allow anyone to call this on behalf of the user?
-    function stake(uint256 amount)
+    function stake(address userAddress)
         external
     {
-        address userAddress = msg.sender;
         uint256 nextEpochNumber = getCurrentEpochNumber().add(1);
-        uint256 staked = stakesPerEpoch[userAddress][nextEpochNumber];
-        uint256 stakeable = getPooledFunds(userAddress).sub(staked);
-        require(stakeable >= amount, "Not enough stakeable funds");
-        stakesPerEpoch[userAddress][nextEpochNumber] = staked.add(amount);
-        totalStakesPerEpoch[nextEpochNumber] = totalStakesPerEpoch[nextEpochNumber].add(amount);
+        uint256 sharesStaked = stakesPerEpoch[userAddress][nextEpochNumber];
+        uint256 sharesToStake = poolShares[userAddress];
+        stakesPerEpoch[userAddress][nextEpochNumber] = sharesToStake;
+        totalStakesPerEpoch[nextEpochNumber] = totalStakesPerEpoch[nextEpochNumber]
+            .add(sharesToStake.sub(sharesStaked));
     }
 
-    function collect()
+    function collect(address userAddress)
         external
     {
-        address userAddress = msg.sender;
         uint256 previousEpochNumber = getCurrentEpochNumber().sub(1);
         uint256 totalStakesInPreviousEpoch = totalStakesPerEpoch[previousEpochNumber];
         uint256 stakeInPreviousEpoch = stakesPerEpoch[userAddress][previousEpochNumber];
@@ -215,11 +212,27 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         balances[userAddress] = balances[userAddress].add(rewards);
     }
 
-    function getPooledFunds(address userAddress)
+    function getPooledFundsOfUser(address userAddress)
         internal
         view
         returns(uint256 pooled)
     {
         pooled = totalPoolShares.mul(totalPoolFunds).div(poolShares[userAddress]);
+    }
+
+    function convertFundsToShares(uint256 amountInFunds)
+        internal
+        view
+        returns(uint256 amountInShares)
+    {
+        amountInShares = totalPoolShares.mul(amountInFunds).div(totalPoolFunds);
+    }
+
+    function convertSharesToFunds(uint256 amountInShares)
+        internal
+        view
+        returns(uint256 amountInFunds)
+    {
+        amountInFunds = amountInShares.mul(totalPoolFunds).div(totalPoolShares);
     }
 }
