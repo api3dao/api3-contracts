@@ -25,12 +25,17 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     mapping(address => uint256) private unpoolRequestEpochs;
     // The shares that users have staked for epochs
     mapping(address => mapping(uint256 => uint256)) private stakesPerEpoch;
+    mapping(uint256 => uint256) private totalStakesPerEpoch;
     mapping(bytes32 => Vesting) private vestings;
     uint256 private noVestings;
 
-    // TODO: Make these two updateable
+    mapping(uint256 => uint256) private vestedRewardsPerEpoch;
+    mapping(uint256 => uint256) private rewardsPerEpoch;
+
+    // TODO: Make these updateable
     uint256 private unpoolRequestCooldown = 4; // in epochs
     uint256 private unpoolWaitingPeriod = 2; // in epochs
+    uint256 private rewardVestingPeriod = 52; // in epochs
 
     constructor(
         address api3TokenAddress,
@@ -139,8 +144,11 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         );
         pooled = pooled.sub(amount);
         // In case the user stakes and unpools right after
-        if (stakesPerEpoch[userAddress][nextEpochNumber] > pooled)
+        uint256 staked = stakesPerEpoch[userAddress][nextEpochNumber];
+        if (staked > pooled)
         {
+            totalStakesPerEpoch[nextEpochNumber] = totalStakesPerEpoch[nextEpochNumber]
+                .sub(staked.sub(pooled));
             stakesPerEpoch[userAddress][nextEpochNumber] = pooled;
         }
         uint256 poolShare = totalPoolShares.mul(amount).div(totalPoolFunds);
@@ -159,13 +167,44 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         uint256 stakeable = getPooledFunds(userAddress).sub(currentStaked);
         require(stakeable >= amount, "Not enough stakeable funds");
         stakesPerEpoch[userAddress][nextEpochNumber] = currentStaked.add(amount);
+        totalStakesPerEpoch[nextEpochNumber] = totalStakesPerEpoch[nextEpochNumber].add(amount);
+    }
+
+    function collect()
+        external
+    {
+        address userAddress = msg.sender;
+        uint256 previousEpochNumber = getCurrentEpochNumber().sub(1);
+        uint256 totalStakesInPreviousEpoch = totalStakesPerEpoch[previousEpochNumber];
+        uint256 userStakeInPreviousEpoch = stakesPerEpoch[userAddress][previousEpochNumber];
+
+        uint256 vestedRewards = vestedRewardsPerEpoch[previousEpochNumber]
+            .mul(totalStakesInPreviousEpoch)
+            .div(userStakeInPreviousEpoch);
+        balances[userAddress] = balances[userAddress].add(vestedRewards);
+        unvestedFunds[userAddress] = unvestedFunds[userAddress].add(vestedRewards);
+        bytes32 vestingId = keccak256(abi.encodePacked(
+                noVestings,
+                this
+                ));
+            noVestings = noVestings.add(1);
+            vestings[vestingId] = Vesting({
+                userAddress: userAddress,
+                amount: vestedRewards,
+                epoch: previousEpochNumber.add(1).add(rewardVestingPeriod)
+            });
+        
+        uint256 rewards = rewardsPerEpoch[previousEpochNumber]
+            .mul(totalStakesInPreviousEpoch)
+            .div(userStakeInPreviousEpoch);
+        balances[userAddress] = balances[userAddress].add(rewards);
     }
 
     function getPooledFunds(address userAddress)
         internal
         view
-        returns(uint256 pooledFunds)
+        returns(uint256 pooled)
     {
-        pooledFunds = totalPoolShares.mul(totalPoolFunds).div(poolShares[userAddress]);
+        pooled = totalPoolShares.mul(totalPoolFunds).div(poolShares[userAddress]);
     }
 }
