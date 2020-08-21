@@ -72,17 +72,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         balances[userAddress] = balances[userAddress].add(amount);
         if (vestingEpoch != 0)
         {
-            unvestedFunds[userAddress] = unvestedFunds[userAddress].add(amount);
-            bytes32 vestingId = keccak256(abi.encodePacked(
-                noVestings,
-                this
-                ));
-            noVestings = noVestings.add(1);
-            vestings[vestingId] = Vesting({
-                userAddress: userAddress,
-                amount: amount,
-                epoch: vestingEpoch
-            });
+            createVesting(userAddress, amount, vestingEpoch);
         }
     }
 
@@ -186,7 +176,8 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     function collect(address userAddress)
         external
     {
-        uint256 previousEpochNumber = getCurrentEpochNumber().sub(1);
+        uint256 currentEpochNumber = getCurrentEpochNumber();
+        uint256 previousEpochNumber = currentEpochNumber.sub(1);
         uint256 totalStakesInPreviousEpoch = totalStakesPerEpoch[previousEpochNumber];
         uint256 stakeInPreviousEpoch = stakesPerEpoch[userAddress][previousEpochNumber];
 
@@ -194,7 +185,22 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
             .mul(totalStakesInPreviousEpoch)
             .div(stakeInPreviousEpoch);
         balances[userAddress] = balances[userAddress].add(vestedRewards);
-        unvestedFunds[userAddress] = unvestedFunds[userAddress].add(vestedRewards);
+        createVesting(userAddress, vestedRewards, currentEpochNumber.add(rewardVestingPeriod));
+        
+        uint256 rewards = rewardsPerEpoch[previousEpochNumber]
+            .mul(totalStakesInPreviousEpoch)
+            .div(stakeInPreviousEpoch);
+        balances[userAddress] = balances[userAddress].add(rewards);
+    }
+
+    function createVesting(
+        address userAddress,
+        uint256 amount,
+        uint256 vestingEpoch
+        )
+        internal
+    {
+        unvestedFunds[userAddress] = unvestedFunds[userAddress].add(amount);
         bytes32 vestingId = keccak256(abi.encodePacked(
                 noVestings,
                 this
@@ -202,14 +208,9 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
             noVestings = noVestings.add(1);
             vestings[vestingId] = Vesting({
                 userAddress: userAddress,
-                amount: vestedRewards,
-                epoch: previousEpochNumber.add(1).add(rewardVestingPeriod)
+                amount: amount,
+                epoch: vestingEpoch
             });
-        
-        uint256 rewards = rewardsPerEpoch[previousEpochNumber]
-            .mul(totalStakesInPreviousEpoch)
-            .div(stakeInPreviousEpoch);
-        balances[userAddress] = balances[userAddress].add(rewards);
     }
 
     function getPooledFundsOfUser(address userAddress)
