@@ -59,9 +59,10 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         {
             unvestedFunds[userAddress] = unvestedFunds[userAddress].add(amount);
             bytes32 vestingId = keccak256(abi.encodePacked(
-                noVestings++,
+                noVestings,
                 this
                 ));
+            noVestings = noVestings.add(1);
             vestings[vestingId] = Vesting({
                 userAddress: userAddress,
                 amount: amount,
@@ -126,6 +127,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     {
         address userAddress = msg.sender;
         uint256 currentEpochNumber = getCurrentEpochNumber();
+        uint256 nextEpochNumber = currentEpochNumber.add(1);
         require(
             unpoolRequestEpochs[userAddress].add(unpoolWaitingPeriod) == currentEpochNumber,
             "Have to unpool unpoolWaitingPeriod epochs after the request"
@@ -137,9 +139,9 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         );
         pooled = pooled.sub(amount);
         // In case the user stakes and unpools right after
-        if (stakesPerEpoch[userAddress][currentEpochNumber + 1] > pooled)
+        if (stakesPerEpoch[userAddress][nextEpochNumber] > pooled)
         {
-            stakesPerEpoch[userAddress][currentEpochNumber + 1] = pooled;
+            stakesPerEpoch[userAddress][nextEpochNumber] = pooled;
         }
         uint256 poolShare = totalPoolShares.mul(amount).div(totalPoolFunds);
         poolShares[userAddress] = poolShares[userAddress].sub(poolShare);
@@ -152,11 +154,11 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         external
     {
         address userAddress = msg.sender;
-        uint256 currentEpochNumber = getCurrentEpochNumber();
-        uint256 currentStaked = stakesPerEpoch[userAddress][currentEpochNumber + 1];
+        uint256 nextEpochNumber = getCurrentEpochNumber().add(1);
+        uint256 currentStaked = stakesPerEpoch[userAddress][nextEpochNumber];
         uint256 stakeable = getPooledFunds(userAddress).sub(currentStaked);
         require(stakeable >= amount, "Not enough stakeable funds");
-        stakesPerEpoch[userAddress][currentEpochNumber + 1] = currentStaked.add(amount);
+        stakesPerEpoch[userAddress][nextEpochNumber] = currentStaked.add(amount);
     }
 
     function getPooledFunds(address userAddress)
