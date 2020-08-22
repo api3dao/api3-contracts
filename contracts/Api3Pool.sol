@@ -23,7 +23,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         ClaimStatus status;
     }
 
-    struct IOU
+    struct Iou
     {
         address userAddress;
         uint256 amount;
@@ -69,7 +69,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
 
     // A record of IOUs
     uint256 private noIous;
-    mapping(bytes32 => IOU) private ious;
+    mapping(bytes32 => Iou) private ious;
     
 
     // TODO: Make these updatable
@@ -113,6 +113,30 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         require(getCurrentEpochNumber() < vesting.epoch, "It is not time to vest yet");
         unvestedFunds[vesting.userAddress] = unvestedFunds[vesting.userAddress].sub(vesting.amount);
         delete vestings[vestingId];
+    }
+
+    function redeem(bytes32 iouId)
+        external
+    {
+        Iou memory iou = ious[iouId];
+        if (iou.iouType == IouType.InTokens)
+        {
+            require(
+                claims[iou.claimId].status == ClaimStatus.Denied,
+                "To redeem this IOU, the respective claim has to be denied"
+                );
+            balances[iou.userAddress] = balances[iou.userAddress].add(iou.amount);
+        }
+        else
+        {
+            require(
+                claims[iou.claimId].status == ClaimStatus.Accepted,
+                "To redeem this IOU, the respective claim has to be accepted"
+                );
+            uint256 amountInTokens = convertSharesToFunds(iou.amount);
+            balances[iou.userAddress] = balances[iou.userAddress].add(amountInTokens);
+        }
+        delete vestings[iouId];
     }
 
     function withdraw(
@@ -293,7 +317,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
             this
             ));
         noIous = noIous.add(1);
-        ious[iouId] = IOU({
+        ious[iouId] = Iou({
             userAddress: userAddress,
             amount: amount,
             claimId: claimId,
