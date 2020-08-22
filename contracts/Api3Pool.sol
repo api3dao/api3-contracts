@@ -7,6 +7,7 @@ import "./EpochUtils.sol";
 
 contract Api3Pool is InterfaceUtils, EpochUtils {
     enum ClaimStatus { Pending, Accepted, Denied }
+    enum IouType { InTokens, InShares }
 
     struct Vesting
     {
@@ -22,11 +23,12 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         ClaimStatus status;
     }
 
-    struct IOU1
+    struct IOU
     {
         address userAddress;
         uint256 amount;
         bytes32 claimId;
+        IouType iouType;
     }
 
     // User balances, includes vested and unvested funds (not IOUs)
@@ -66,8 +68,8 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     bytes32[] private activeClaims;
 
     // A record of IOUs
-    uint256 private noIou1s;
-    mapping(bytes32 => IOU1) private iou1s;
+    uint256 private noIous;
+    mapping(bytes32 => IOU) private ious;
     
 
     // TODO: Make these updatable
@@ -140,6 +142,15 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         poolShares[userAddress] = poolShares[userAddress].add(poolShare);
         totalPoolShares = totalPoolShares.add(poolShare);
         totalPoolFunds = totalPoolFunds.add(amount);
+
+        // Create the IOUs
+        for (uint256 ind = 0; ind < activeClaims.length; ind++)
+        {
+            bytes32 claimId = activeClaims[ind];
+            uint256 iouAmountInTokens = poolShare.mul(claims[claimId].amount).div(totalPoolShares);
+            uint256 iouAmountInShares = convertFundsToShares(iouAmountInTokens);
+            createIou(userAddress, iouAmountInShares, claimId, IouType.InShares);
+        }
     }
 
     /// If a user has made a request to unpool at epoch t, they can't repeat
@@ -192,7 +203,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         {
             bytes32 claimId = activeClaims[ind];
             uint256 iouAmount = poolShare.mul(claims[claimId].amount).div(totalPoolShares);
-            createIou1(userAddress, iouAmount, claimId);
+            createIou(userAddress, iouAmount, claimId, IouType.InTokens);
             balances[userAddress] = balances[userAddress].sub(iouAmount);
         }
 
@@ -269,22 +280,24 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
             });
     }
 
-    function createIou1(
+    function createIou(
         address userAddress,
         uint256 amount,
-        bytes32 claimId
+        bytes32 claimId,
+        IouType iouType
         )
         internal
     {
-        bytes32 iou1Id = keccak256(abi.encodePacked(
-            noIou1s,
+        bytes32 iouId = keccak256(abi.encodePacked(
+            noIous,
             this
             ));
-        noIou1s = noIou1s.add(1);
-        iou1s[iou1Id] = IOU1({
+        noIous = noIous.add(1);
+        ious[iouId] = IOU({
             userAddress: userAddress,
             amount: amount,
-            claimId: claimId
+            claimId: claimId,
+            iouType: iouType
             });
     }
 
