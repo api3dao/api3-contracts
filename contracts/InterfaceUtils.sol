@@ -8,8 +8,10 @@ import "./interfaces/IInflationSchedule.sol";
 contract InterfaceUtils is Ownable {
     IApi3Token public immutable api3Token;
     IInflationSchedule public inflationSchedule;
+    address public claimsManager;
 
     event InflationScheduleUpdated(address inflationScheduleAddress);
+    event ClaimsManagerUpdated(address claimsManager);
 
     constructor(
         address api3TokenAddress,
@@ -28,5 +30,19 @@ contract InterfaceUtils is Ownable {
     {
         inflationSchedule = IInflationSchedule(inflationScheduleAddress);
         emit InflationScheduleUpdated(inflationScheduleAddress);
+    }
+
+    function updateClaimsInterface(address claimsManagerAddress)
+        external
+        onlyOwner
+    {
+        claimsManager = claimsManagerAddress;
+        emit ClaimsManagerUpdated(claimsManager);
+    }
+
+    modifier onlyClaimsManager()
+    {
+        require(msg.sender == claimsManager, "Not authorized to manage claims processes");
+        _;
     }
 }

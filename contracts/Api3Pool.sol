@@ -6,11 +6,20 @@ import "./EpochUtils.sol";
 
 
 contract Api3Pool is InterfaceUtils, EpochUtils {
+    enum ClaimStatus { Pending, Accepted, Denied }
+
     struct Vesting
     {
         address userAddress;
         uint256 amount;
         uint256 epoch;
+    }
+
+    struct Claim
+    {
+        address beneficiary;
+        uint256 amount;
+        ClaimStatus status;
     }
 
     // User balances, includes vested and unvested funds (not IOUs)
@@ -43,6 +52,11 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     // A record of vestings
     uint256 private noVestings;
     mapping(bytes32 => Vesting) private vestings;
+
+    // A record of claims
+    uint256 private noClaims;
+    mapping(bytes32 => Claim) private claims;
+    bytes32[] private activeClaims;
 
     // TODO: Make these updatable
     uint256 private unpoolRequestCooldown = 4; // in epochs
@@ -231,6 +245,59 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
             amount: amount,
             epoch: vestingEpoch
             });
+    }
+
+    function createClaim(
+        address beneficiary,
+        uint256 amount
+        )
+        external
+        onlyClaimsManager
+    {
+        require(totalPoolFunds >= amount, "Not enough funds in the collateral pool");
+        bytes32 claimId = keccak256(abi.encodePacked(
+            noClaims,
+            this
+            ));
+        noClaims = noClaims.add(1);
+        claims[claimId] = Claim({
+            beneficiary: beneficiary,
+            amount: amount,
+            status: ClaimStatus.Pending
+            });
+        activeClaims.push(claimId);
+    }
+
+    function acceptClaim(bytes32 claimId)
+        external
+        onlyClaimsManager
+    {
+        require(deactivateClaim(claimId), "No such active claim exists");
+        claims[claimId].status = ClaimStatus.Accepted;
+        Claim memory claim = claims[claimId];
+        api3Token.transferFrom(address(this), claim.beneficiary, claim.amount);
+    }
+
+    function denyClaim(bytes32 claimId)
+        external
+        onlyClaimsManager
+    {
+        require(deactivateClaim(claimId), "No such active claim exists");
+        claims[claimId].status = ClaimStatus.Denied;
+    }
+
+    function deactivateClaim(bytes32 claimId)
+        internal
+        returns(bool success)
+    {
+        for (uint256 ind = 0; ind < activeClaims.length; ind++){
+            if (activeClaims[ind] == claimId)
+            {
+                delete activeClaims[ind];
+                return true;
+            }
+        }
+        return false;
     }
 
     function addVestedRewards(
