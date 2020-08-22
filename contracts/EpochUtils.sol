@@ -12,9 +12,9 @@ contract EpochUtils {
     constructor(uint256 _epochPeriodInSeconds)
         public
         {
-            require(_epochPeriodInSeconds != 0, "Epoch cannot be 0");
-            firstEpochStartTimestamp = now;
+            require(_epochPeriodInSeconds != 0, "Epoch period cannot be 0");
             epochPeriodInSeconds = _epochPeriodInSeconds;
+            firstEpochStartTimestamp = now;
         }
 
     function getCurrentEpochNumber()
@@ -34,6 +34,6 @@ contract EpochUtils {
         {
             return 0;
         }
-        return ((timestamp.sub(firstEpochStartTimestamp)).div(epochPeriodInSeconds)).add(1);
+        return timestamp.sub(firstEpochStartTimestamp).div(epochPeriodInSeconds).add(1);
     }
 }
