@@ -20,11 +20,11 @@ contract InflationSchedule is IInflationSchedule {
 
     /// Terminal annual inflation rate: 0.025
     /// Terminal weekly inflation rate: 0.025 / 52
-    /// Terminal weekly inflationary supply rate: 1e18 * 0.025 / 52
+    /// Terminal weekly inflationary supply rate: 1e18 * 0.025 / 52 = 480769230769230
     uint256 public constant TERMINAL_WEEKLY_SUPPLY_RATE = 480769230769230;
 
     // 5 years * 52 weeks/year = 260
-    uint256 public constant DECAY_PERIOD_IN_EPOCHS = 260;
+    uint256 public constant DECAY_PERIOD = 260;
 
     IApi3Token public immutable api3Token;
     uint256[] public weeklySupplyCoeffs;
@@ -39,12 +39,12 @@ contract InflationSchedule is IInflationSchedule {
         {
             api3Token = IApi3Token(api3TokenAddress);
             startEpoch = _startEpoch;
-            terminalEpoch = _startEpoch + DECAY_PERIOD_IN_EPOCHS;
-            weeklySupplyCoeffs = new uint256[](DECAY_PERIOD_IN_EPOCHS);
+            terminalEpoch = _startEpoch + DECAY_PERIOD;
+            weeklySupplyCoeffs = new uint256[](DECAY_PERIOD);
             uint supplyCoeff = 1e18;
             weeklySupplyCoeffs[0] = supplyCoeff;
             // Costs ~6.2e6 gas for a 5 year decay period
-            for (uint256 indWeek = 1; indWeek < DECAY_PERIOD_IN_EPOCHS; indWeek++)
+            for (uint256 indWeek = 1; indWeek < DECAY_PERIOD; indWeek++)
             {
                 supplyCoeff = supplyCoeff
                     .mul(WEEKLY_SUPPLY_UPDATE_COEFF)
