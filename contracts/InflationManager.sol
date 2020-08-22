@@ -2,10 +2,10 @@
 pragma solidity >=0.6.8;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./interfaces/IInflationManager.sol";
 import "./interfaces/IApi3Token.sol";
 import "./interfaces/IApi3Pool.sol";
 import "./interfaces/IEpochUtils.sol";
+import "./interfaces/IInflationManager.sol";
 
 
 contract InflationManager is IInflationManager {
@@ -32,10 +32,10 @@ contract InflationManager is IInflationManager {
     IApi3Token public immutable api3Token;
     IApi3Pool public immutable api3Pool;
     IEpochUtils public immutable epochUtils;
+    mapping(uint256 => bool) private mintedInflationaryRewardsForEpoch;
     uint256[] public weeklySupplyCoeffs;
     uint256 public immutable startEpoch;
     uint256 public immutable terminalEpoch;
-    mapping(uint256 => bool) private addedInflationaryRewardsForEpoch;
 
     constructor(
         address api3TokenAddress,
@@ -48,7 +48,7 @@ contract InflationManager is IInflationManager {
             api3Pool = IApi3Pool(api3PoolAddress);
             epochUtils = IEpochUtils(api3PoolAddress);
             startEpoch = _startEpoch;
-            terminalEpoch = _startEpoch + DECAY_PERIOD;
+            terminalEpoch = _startEpoch.add(DECAY_PERIOD);
             weeklySupplyCoeffs = new uint256[](DECAY_PERIOD);
             uint supplyCoeff = 1e18;
             weeklySupplyCoeffs[0] = supplyCoeff;
@@ -68,14 +68,14 @@ contract InflationManager is IInflationManager {
       {
           uint256 currentEpochNumber = epochUtils.getCurrentEpochNumber();
           require(
-              !addedInflationaryRewardsForEpoch[currentEpochNumber],
-              "Inflationary rewards for this epoch has already been added"
+              !mintedInflationaryRewardsForEpoch[currentEpochNumber],
+              "Inflationary rewards for this epoch has already been minted"
               );
           uint256 amount = getDeltaTokenSupply(currentEpochNumber);
           api3Token.mint(address(this), amount);
           api3Token.approve(address(api3Pool), amount);
           api3Pool.addVestedRewards(address(this), amount);
-          addedInflationaryRewardsForEpoch[currentEpochNumber] = true;
+          mintedInflationaryRewardsForEpoch[currentEpochNumber] = true;
       }
 
     function getDeltaTokenSupply(uint256 indEpoch)
@@ -90,7 +90,7 @@ contract InflationManager is IInflationManager {
         }
         else if (indEpoch <= terminalEpoch)
         {
-            uint256 indWeek = indEpoch - startEpoch;
+            uint256 indWeek = indEpoch.sub(startEpoch);
             return weeklySupplyCoeffs[indWeek]
                 .mul(INITIAL_WEEKLY_SUPPLY)
                 .div(1e18);

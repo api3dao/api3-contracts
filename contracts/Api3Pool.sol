@@ -49,30 +49,26 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
     // User staked pool shares at each epoch
     mapping(address => mapping(uint256 => uint256)) private stakesPerEpoch;
 
-    // Total rewards to be vested at each epoch
+    // Total rewards to be vested at each epoch (e.g., inflationary)
     mapping(uint256 => uint256) private vestedRewardsPerEpoch;
     mapping(uint256 => uint256) private unpaidVestedRewardsPerEpoch;
-    // Total rewards received instantly at each epoch
+    // Total rewards received instantly at each epoch (e.g., revenue distribution)
     mapping(uint256 => uint256) private instantRewardsPerEpoch;
     mapping(uint256 => uint256) private unpaidInstantRewardsPerEpoch;
 
     // The epoch when the user made their last unpool request
     mapping(address => uint256) private unpoolRequestEpochs;
 
-    // A record of vestings
     uint256 private noVestings;
     mapping(bytes32 => Vesting) private vestings;
 
-    // A record of claims
     uint256 private noClaims;
     mapping(bytes32 => Claim) private claims;
     bytes32[] private activeClaims;
 
-    // A record of IOUs
     uint256 private noIous;
     mapping(bytes32 => Iou) private ious;
     
-
     // TODO: Make these updatable
     uint256 private unpoolRequestCooldown = 4; // in epochs
     uint256 private unpoolWaitingPeriod = 2; // in epochs
@@ -111,7 +107,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
         external
     {
         Vesting memory vesting = vestings[vestingId];
-        require(getCurrentEpochNumber() < vesting.epoch, "It is not time to vest yet");
+        require(getCurrentEpochNumber() < vesting.epoch, "Have to wait until vesting.epoch to vest");
         unvestedFunds[vesting.userAddress] = unvestedFunds[vesting.userAddress].sub(vesting.amount);
         delete vestings[vestingId];
     }
@@ -173,14 +169,13 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
         {
             bytes32 claimId = activeClaims[ind];
             uint256 iouAmountInTokens = poolShare.mul(claims[claimId].amount).div(totalPoolShares);
-            uint256 iouAmountInShares = convertFundsToShares(iouAmountInTokens);
+            uint256 iouAmountInShares = convertFundsToShares(iouAmountInTokens); // ???
             createIou(userAddress, iouAmountInShares, claimId, IouType.InShares);
         }
     }
 
     /// If a user has made a request to unpool at epoch t, they can't repeat
     /// their request at t+1 to postpone their unpooling to one epoch later.
-    /// Should we allow this?
     function requestToUnpool()
         external
     {
@@ -230,6 +225,8 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
             uint256 iouAmount = poolShare.mul(claims[claimId].amount).div(totalPoolShares);
             createIou(userAddress, iouAmount, claimId, IouType.InTokens);
             balances[userAddress] = balances[userAddress].sub(iouAmount);
+            // Leave the IOU amount in the pool
+            totalPoolFunds = totalPoolFunds.add(iouAmount); // ???
         }
 
         poolShares[userAddress] = poolShares[userAddress].sub(poolShare);
@@ -269,6 +266,8 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
             .mul(totalStakesInPreviousEpoch)
             .div(stakeInPreviousEpoch);
         balances[userAddress] = balances[userAddress].add(vestedRewards);
+        unpaidVestedRewardsPerEpoch[previousEpochNumber] = unpaidVestedRewardsPerEpoch[previousEpochNumber]
+            .sub(vestedRewards);
         createVesting(userAddress, vestedRewards, currentEpochNumber.add(rewardVestingPeriod));
 
         // Carry over instant rewards from two epochs ago
@@ -279,10 +278,12 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
             unpaidInstantRewardsPerEpoch[twoPreviousEpochNumber] = 0;
         }
 
-        uint256 rewards = instantRewardsPerEpoch[previousEpochNumber]
+        uint256 instantRewards = instantRewardsPerEpoch[previousEpochNumber]
             .mul(totalStakesInPreviousEpoch)
             .div(stakeInPreviousEpoch);
-        balances[userAddress] = balances[userAddress].add(rewards);
+        balances[userAddress] = balances[userAddress].add(instantRewards);
+        unpaidInstantRewardsPerEpoch[previousEpochNumber] = unpaidInstantRewardsPerEpoch[previousEpochNumber]
+            .sub(instantRewards);
     }
 
     function createVesting(
@@ -351,7 +352,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
         external
         onlyClaimsManager
     {
-        require(deactivateClaim(claimId), "No such active claim exists");
+        require(deactivateClaim(claimId), "No such active claim");
         claims[claimId].status = ClaimStatus.Accepted;
         Claim memory claim = claims[claimId];
         api3Token.transferFrom(address(this), claim.beneficiary, claim.amount);
@@ -361,7 +362,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
         external
         onlyClaimsManager
     {
-        require(deactivateClaim(claimId), "No such active claim exists");
+        require(deactivateClaim(claimId), "No such active claim");
         claims[claimId].status = ClaimStatus.Denied;
     }
 

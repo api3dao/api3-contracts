@@ -26,7 +26,7 @@ contract EpochUtils is IEpochUtils {
         public
         view
         override
-        returns(uint256)
+        returns(uint256 currentEpochNumber)
     {
         return getEpochNumber(now);
     }
@@ -35,7 +35,7 @@ contract EpochUtils is IEpochUtils {
         public
         view
         override
-        returns(uint256)
+        returns(uint256 epochNumber)
     {
         if (timestamp < firstEpochStartTimestamp)
         {

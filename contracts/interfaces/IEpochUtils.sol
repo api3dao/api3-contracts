@@ -6,10 +6,10 @@ interface IEpochUtils {
     function getCurrentEpochNumber()
         external
         view
-        returns(uint256);
+        returns(uint256 currentEpochNumber);
 
     function getEpochNumber(uint256 timestamp)
         external
         view
-        returns(uint256);
+        returns(uint256 epochNumber);
 }
