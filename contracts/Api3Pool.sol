@@ -22,6 +22,13 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         ClaimStatus status;
     }
 
+    struct IOU1
+    {
+        address userAddress;
+        uint256 amount;
+        bytes32 claimId;
+    }
+
     // User balances, includes vested and unvested funds (not IOUs)
     mapping(address => uint256) private balances;
     // User unvested funds
@@ -57,6 +64,11 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     uint256 private noClaims;
     mapping(bytes32 => Claim) private claims;
     bytes32[] private activeClaims;
+
+    // A record of IOUs
+    uint256 private noIou1s;
+    mapping(bytes32 => IOU1) private iou1s;
+    
 
     // TODO: Make these updatable
     uint256 private unpoolRequestCooldown = 4; // in epochs
@@ -174,6 +186,16 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         }
 
         uint256 poolShare = convertFundsToShares(amount);
+
+        // Create the IOUs
+        for (uint256 ind = 0; ind < activeClaims.length; ind++)
+        {
+            bytes32 claimId = activeClaims[ind];
+            uint256 iouAmount = poolShare.mul(claims[claimId].amount).div(totalPoolShares);
+            createIou1(userAddress, iouAmount, claimId);
+            balances[userAddress] = balances[userAddress].sub(iouAmount);
+        }
+
         poolShares[userAddress] = poolShares[userAddress].sub(poolShare);
         totalPoolShares = totalPoolShares.sub(poolShare);
         totalPoolFunds = totalPoolFunds.sub(amount);
@@ -247,6 +269,25 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
             });
     }
 
+    function createIou1(
+        address userAddress,
+        uint256 amount,
+        bytes32 claimId
+        )
+        internal
+    {
+        bytes32 iou1Id = keccak256(abi.encodePacked(
+            noIou1s,
+            this
+            ));
+        noIou1s = noIou1s.add(1);
+        iou1s[iou1Id] = IOU1({
+            userAddress: userAddress,
+            amount: amount,
+            claimId: claimId
+            });
+    }
+
     function createClaim(
         address beneficiary,
         uint256 amount
@@ -290,7 +331,8 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         internal
         returns(bool success)
     {
-        for (uint256 ind = 0; ind < activeClaims.length; ind++){
+        for (uint256 ind = 0; ind < activeClaims.length; ind++)
+        {
             if (activeClaims[ind] == claimId)
             {
                 delete activeClaims[ind];
