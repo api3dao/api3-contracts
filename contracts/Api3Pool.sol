@@ -12,7 +12,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         uint256 amount;
         uint256 epoch;
     }
-  
+
     // User balances, includes vested and unvested funds (not IOUs)
     mapping(address => uint256) private balances;
     // User unvested funds
@@ -32,12 +32,14 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
 
     // Total rewards to be vested at each epoch
     mapping(uint256 => uint256) private vestedRewardsPerEpoch;
-    // Total rewards at each epoch (not vested, received immediately)
-    mapping(uint256 => uint256) private rewardsPerEpoch;
+    mapping(uint256 => uint256) private unpaidVestedRewardsPerEpoch;
+    // Total rewards received instantly at each epoch
+    mapping(uint256 => uint256) private instantRewardsPerEpoch;
+    mapping(uint256 => uint256) private unpaidInstantRewardsPerEpoch;
 
     // The epoch when the user made their last unpool request
     mapping(address => uint256) private unpoolRequestEpochs;
-    
+
     // A record of vestings
     uint256 private noVestings;
     mapping(bytes32 => Vesting) private vestings;
@@ -59,7 +61,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         EpochUtils(epochPeriodInSeconds)
         public
         {}
-    
+
     function deposit(
         address sourceAddress,
         uint256 amount,
@@ -183,23 +185,29 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         uint256 totalStakesInPreviousEpoch = totalStakesPerEpoch[previousEpochNumber];
         uint256 stakeInPreviousEpoch = stakesPerEpoch[userAddress][previousEpochNumber];
 
-        // Carry over rewards from two epochs ago
-        vestedRewardsPerEpoch[previousEpochNumber] = vestedRewardsPerEpoch[previousEpochNumber]
-            .add(vestedRewardsPerEpoch[twoPreviousEpochNumber]);
-        vestedRewardsPerEpoch[twoPreviousEpochNumber] = 0;
+        // Carry over vested rewards from two epochs ago
+        if (unpaidVestedRewardsPerEpoch[twoPreviousEpochNumber] != 0)
+        {
+            vestedRewardsPerEpoch[previousEpochNumber] = vestedRewardsPerEpoch[previousEpochNumber]
+                .add(unpaidVestedRewardsPerEpoch[twoPreviousEpochNumber]);
+            unpaidVestedRewardsPerEpoch[twoPreviousEpochNumber] = 0;
+        }
 
         uint256 vestedRewards = vestedRewardsPerEpoch[previousEpochNumber]
             .mul(totalStakesInPreviousEpoch)
             .div(stakeInPreviousEpoch);
         balances[userAddress] = balances[userAddress].add(vestedRewards);
         createVesting(userAddress, vestedRewards, currentEpochNumber.add(rewardVestingPeriod));
-        
-        // Carry over rewards from two epochs ago
-        rewardsPerEpoch[previousEpochNumber] = rewardsPerEpoch[previousEpochNumber]
-            .add(rewardsPerEpoch[twoPreviousEpochNumber]);
-        rewardsPerEpoch[twoPreviousEpochNumber] = 0;
 
-        uint256 rewards = rewardsPerEpoch[previousEpochNumber]
+        // Carry over instant rewards from two epochs ago
+        if (unpaidInstantRewardsPerEpoch[twoPreviousEpochNumber] != 0)
+        {
+            instantRewardsPerEpoch[previousEpochNumber] = instantRewardsPerEpoch[previousEpochNumber]
+                .add(unpaidInstantRewardsPerEpoch[twoPreviousEpochNumber]);
+            unpaidInstantRewardsPerEpoch[twoPreviousEpochNumber] = 0;
+        }
+
+        uint256 rewards = instantRewardsPerEpoch[previousEpochNumber]
             .mul(totalStakesInPreviousEpoch)
             .div(stakeInPreviousEpoch);
         balances[userAddress] = balances[userAddress].add(rewards);
@@ -225,26 +233,29 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
             });
     }
 
-    // Should we allow reward payments to specify the epoch?
-    function payVestedRewards(
+    function addVestedRewards(
         address sourceAddress,
         uint256 amount
         )
         external
     {
         uint256 currentEpochNumber = getCurrentEpochNumber();
-        vestedRewardsPerEpoch[currentEpochNumber] = vestedRewardsPerEpoch[currentEpochNumber].add(amount);
+        uint256 updatedVestedRewards = vestedRewardsPerEpoch[currentEpochNumber].add(amount);
+        vestedRewardsPerEpoch[currentEpochNumber] = updatedVestedRewards;
+        unpaidVestedRewardsPerEpoch[currentEpochNumber] = updatedVestedRewards;
         api3Token.transferFrom(sourceAddress, address(this), amount);
     }
 
-    function payRewards(
+    function addRewards(
         address sourceAddress,
         uint256 amount
         )
         external
     {
         uint256 currentEpochNumber = getCurrentEpochNumber();
-        rewardsPerEpoch[currentEpochNumber] = rewardsPerEpoch[currentEpochNumber].add(amount);
+        uint256 updatedInstantRewards = instantRewardsPerEpoch[currentEpochNumber].add(amount);
+        instantRewardsPerEpoch[currentEpochNumber] = updatedInstantRewards;
+        unpaidInstantRewardsPerEpoch[currentEpochNumber] = updatedInstantRewards;
         api3Token.transferFrom(sourceAddress, address(this), amount);
     }
 
