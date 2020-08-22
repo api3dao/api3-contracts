@@ -2,10 +2,13 @@
 pragma solidity >=0.6.8;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./interfaces/IInflationSchedule.sol";
+import "./interfaces/IInflationManager.sol";
 import "./interfaces/IApi3Token.sol";
+import "./interfaces/IApi3Pool.sol";
+import "./interfaces/IEpochUtils.sol";
 
-contract InflationSchedule is IInflationSchedule {
+
+contract InflationManager is IInflationManager {
     using SafeMath for uint256;
 
     ///  Initial annual inflation rate: 0.75
@@ -27,17 +30,23 @@ contract InflationSchedule is IInflationSchedule {
     uint256 public constant DECAY_PERIOD = 260;
 
     IApi3Token public immutable api3Token;
+    IApi3Pool public immutable api3Pool;
+    IEpochUtils public immutable epochUtils;
     uint256[] public weeklySupplyCoeffs;
     uint256 public immutable startEpoch;
     uint256 public immutable terminalEpoch;
+    mapping(uint256 => bool) private addedInflationaryRewardsForEpoch;
 
     constructor(
         address api3TokenAddress,
+        address api3PoolAddress,
         uint256 _startEpoch
         )
         public
         {
             api3Token = IApi3Token(api3TokenAddress);
+            api3Pool = IApi3Pool(api3PoolAddress);
+            epochUtils = IEpochUtils(api3PoolAddress);
             startEpoch = _startEpoch;
             terminalEpoch = _startEpoch + DECAY_PERIOD;
             weeklySupplyCoeffs = new uint256[](DECAY_PERIOD);
@@ -52,9 +61,25 @@ contract InflationSchedule is IInflationSchedule {
                 weeklySupplyCoeffs[indWeek] = supplyCoeff;
             }
         }
+    
+    function mintInflationaryRewardsToPool()
+        external
+        override
+      {
+          uint256 currentEpochNumber = epochUtils.getCurrentEpochNumber();
+          require(
+              !addedInflationaryRewardsForEpoch[currentEpochNumber],
+              "Inflationary rewards for this epoch has already been added"
+              );
+          uint256 amount = getDeltaTokenSupply(currentEpochNumber);
+          api3Token.mint(address(this), amount);
+          api3Token.approve(address(api3Pool), amount);
+          api3Pool.addVestedRewards(address(this), amount);
+          addedInflationaryRewardsForEpoch[currentEpochNumber] = true;
+      }
 
     function getDeltaTokenSupply(uint256 indEpoch)
-        external
+        public
         view
         override
         returns(uint256 deltaTokenSupply)

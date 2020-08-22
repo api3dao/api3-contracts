@@ -3,9 +3,10 @@ pragma solidity ^0.6.8;
 
 import "./InterfaceUtils.sol";
 import "./EpochUtils.sol";
+import "./interfaces/IApi3Pool.sol";
 
 
-contract Api3Pool is InterfaceUtils, EpochUtils {
+contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
     enum ClaimStatus { Pending, Accepted, Denied }
     enum IouType { InTokens, InShares }
 
@@ -79,14 +80,14 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
 
     constructor(
         address api3TokenAddress,
-        address inflationScheduleAddress,
-        uint256 epochPeriodInSeconds
+        uint256 epochPeriodInSeconds,
+        uint256 firstEpochStartTimestamp
         )
-        InterfaceUtils(
-            api3TokenAddress,
-            inflationScheduleAddress
+        InterfaceUtils(api3TokenAddress)
+        EpochUtils(
+            epochPeriodInSeconds,
+            firstEpochStartTimestamp
             )
-        EpochUtils(epochPeriodInSeconds)
         public
         {}
 
@@ -384,6 +385,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         uint256 amount
         )
         external
+        override
     {
         uint256 currentEpochNumber = getCurrentEpochNumber();
         uint256 updatedVestedRewards = vestedRewardsPerEpoch[currentEpochNumber].add(amount);

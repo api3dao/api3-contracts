@@ -2,7 +2,10 @@
 pragma solidity ^0.6.8;
 
 
-interface IInflationSchedule {
+interface IInflationManager {
+    function mintInflationaryRewardsToPool()
+        external;
+
     function getDeltaTokenSupply(uint256 indEpoch)
         external
         view
