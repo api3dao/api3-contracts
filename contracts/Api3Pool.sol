@@ -226,7 +226,8 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
             createIou(userAddress, iouAmount, claimId, IouType.InTokens);
             balances[userAddress] = balances[userAddress].sub(iouAmount);
             // Leave the IOU amount in the pool
-            totalPoolFunds = totalPoolFunds.add(iouAmount); // ???
+            totalPoolFunds = totalPoolFunds.add(iouAmount);
+            totalPoolShares = totalPoolShares.add(convertFundsToShares(iouAmount));
         }
 
         poolShares[userAddress] = poolShares[userAddress].sub(poolShare);
