@@ -426,7 +426,14 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
         view
         returns(uint256 amountInShares)
     {
-        amountInShares = amountInFunds.mul(totalPoolShares).div(totalPoolFunds);
+        if (totalPoolFunds == 0)
+        {
+            amountInShares = amountInFunds;
+        }
+        else
+        {
+            amountInShares = amountInFunds.mul(totalPoolShares).div(totalPoolFunds);
+        }
     }
 
     function convertSharesToFunds(uint256 amountInShares)
