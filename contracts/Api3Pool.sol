@@ -35,7 +35,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     // Total rewards at each epoch (not vested, received immediately)
     mapping(uint256 => uint256) private rewardsPerEpoch;
 
-    // The epoch when the user made the last unpool request
+    // The epoch when the user made their last unpool request
     mapping(address => uint256) private unpoolRequestEpochs;
     
     // A record of vestings
@@ -80,7 +80,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         external
     {
         Vesting memory vesting = vestings[vestingId];
-        require(getCurrentEpochNumber() < vesting.epoch, "Not time to vest yet");
+        require(getCurrentEpochNumber() < vesting.epoch, "It is not time to vest yet");
         unvestedFunds[vesting.userAddress] = unvestedFunds[vesting.userAddress].sub(vesting.amount);
         delete vestings[vestingId];
     }
@@ -124,7 +124,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         uint256 currentEpochNumber = getCurrentEpochNumber();
         require(
             unpoolRequestEpochs[userAddress].add(unpoolRequestCooldown) <= currentEpochNumber,
-            "Have to wait unpoolRequestCooldown to request a new unpool"
+            "Have to wait at least unpoolRequestCooldown to request a new unpool"
             );
         unpoolRequestEpochs[userAddress] = currentEpochNumber;
     }
@@ -136,7 +136,6 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     {
         address userAddress = msg.sender;
         uint256 currentEpochNumber = getCurrentEpochNumber();
-        uint256 nextEpochNumber = currentEpochNumber.add(1);
         require(
             unpoolRequestEpochs[userAddress].add(unpoolWaitingPeriod) == currentEpochNumber,
             "Have to unpool unpoolWaitingPeriod epochs after the request"
@@ -146,9 +145,10 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
             pooled >= amount,
             "Not enough unpoolable funds"
         );
-        pooled = pooled.sub(amount);
         /// Check if the user has staked in this epoch before unpooling and
         /// reduce their staked amount to their updated pooled amount if so
+        pooled = pooled.sub(amount);
+        uint256 nextEpochNumber = currentEpochNumber.add(1);
         uint256 staked = stakesPerEpoch[userAddress][nextEpochNumber];
         if (staked > pooled)
         {
@@ -156,6 +156,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
                 .sub(staked.sub(pooled));
             stakesPerEpoch[userAddress][nextEpochNumber] = pooled;
         }
+
         uint256 poolShare = convertFundsToShares(amount);
         poolShares[userAddress] = poolShares[userAddress].sub(poolShare);
         totalPoolShares = totalPoolShares.sub(poolShare);
@@ -186,6 +187,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         vestedRewardsPerEpoch[previousEpochNumber] = vestedRewardsPerEpoch[previousEpochNumber]
             .add(vestedRewardsPerEpoch[twoPreviousEpochNumber]);
         vestedRewardsPerEpoch[twoPreviousEpochNumber] = 0;
+
         uint256 vestedRewards = vestedRewardsPerEpoch[previousEpochNumber]
             .mul(totalStakesInPreviousEpoch)
             .div(stakeInPreviousEpoch);
@@ -196,6 +198,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         rewardsPerEpoch[previousEpochNumber] = rewardsPerEpoch[previousEpochNumber]
             .add(rewardsPerEpoch[twoPreviousEpochNumber]);
         rewardsPerEpoch[twoPreviousEpochNumber] = 0;
+
         uint256 rewards = rewardsPerEpoch[previousEpochNumber]
             .mul(totalStakesInPreviousEpoch)
             .div(stakeInPreviousEpoch);
@@ -211,14 +214,14 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
     {
         unvestedFunds[userAddress] = unvestedFunds[userAddress].add(amount);
         bytes32 vestingId = keccak256(abi.encodePacked(
-                noVestings,
-                this
-                ));
-            noVestings = noVestings.add(1);
-            vestings[vestingId] = Vesting({
-                userAddress: userAddress,
-                amount: amount,
-                epoch: vestingEpoch
+            noVestings,
+            this
+            ));
+        noVestings = noVestings.add(1);
+        vestings[vestingId] = Vesting({
+            userAddress: userAddress,
+            amount: amount,
+            epoch: vestingEpoch
             });
     }
 
@@ -258,7 +261,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils {
         view
         returns(uint256 amountInShares)
     {
-        amountInShares = totalPoolShares.mul(amountInFunds).div(totalPoolFunds);
+        amountInShares = amountInFunds.mul(totalPoolShares).div(totalPoolFunds);
     }
 
     function convertSharesToFunds(uint256 amountInShares)
