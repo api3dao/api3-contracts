@@ -11,9 +11,7 @@ async function main() {
     Math.floor(Date.now() / 1000)
   );
 
-  const InflationManager = await ethers.getContractFactory(
-    "InflationManager"
-  );
+  const InflationManager = await ethers.getContractFactory("InflationManager");
   const inflationManager = await InflationManager.deploy(
     api3Token.address,
     api3Pool.address,
