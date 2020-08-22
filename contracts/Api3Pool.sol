@@ -163,13 +163,14 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
         poolShares[userAddress] = poolShares[userAddress].add(poolShare);
         totalPoolShares = totalPoolShares.add(poolShare);
         totalPoolFunds = totalPoolFunds.add(amount);
-
+        
         // Create the IOUs
         for (uint256 ind = 0; ind < activeClaims.length; ind++)
         {
             bytes32 claimId = activeClaims[ind];
-            uint256 iouAmountInTokens = poolShare.mul(claims[claimId].amount).div(totalPoolShares);
-            uint256 iouAmountInShares = convertFundsToShares(iouAmountInTokens); // ???
+            uint256 totalPoolFundsAfterClaimPayout = totalPoolFunds.sub(claims[claimId].amount);
+            uint256 poolSharesRequiredToNotSufferLoss = amount.mul(totalPoolShares).div(totalPoolFundsAfterClaimPayout);
+            uint256 iouAmountInShares = poolShare.sub(poolSharesRequiredToNotSufferLoss);
             createIou(userAddress, iouAmountInShares, claimId, IouType.InShares);
         }
     }
