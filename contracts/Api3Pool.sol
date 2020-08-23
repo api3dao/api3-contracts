@@ -160,4 +160,17 @@ contract Api3Pool is Ownable, EpochUtils {
     {
         amount = amountInShares.mul(totalPoolFunds).div(totalPoolShares);
     }
+
+    function getVotingPower(
+        address userAddress,
+        uint256 timestamp
+        )
+        external
+        view
+        returns(uint256 votingPower)
+    {
+        uint256 epochNumber = getEpochNumber(timestamp);
+        votingPower = stakesAtEpoch[userAddress][epochNumber]
+            .mul(1e18).div(totalStakesAtEpoch[epochNumber]);
+    }
 }
