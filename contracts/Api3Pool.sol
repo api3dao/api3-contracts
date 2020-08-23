@@ -4,6 +4,7 @@ pragma solidity ^0.6.8;
 import "./EpochUtils.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IApi3Token.sol";
+import "./interfaces/IInflationManager.sol";
 
 
 contract Api3Pool is Ownable, EpochUtils {
@@ -32,6 +33,7 @@ contract Api3Pool is Ownable, EpochUtils {
     }
 
     IApi3Token public immutable api3Token;
+    IInflationManager public inflationManager;
     address public claimsManager;
 
     // User balances, includes vested and unvested funds (not IOUs)
@@ -83,6 +85,7 @@ contract Api3Pool is Ownable, EpochUtils {
     mapping(bytes32 => Vesting) internal vestings;
     // ~~~~~~Vesting~~~~~~
 
+    event InflationManagerUpdated(address inflationManagerAddress);
     event RewardVestingPeriodUpdated(uint256 rewardVestingPeriod);
     event UnpoolRequestCooldownUpdated(uint256 unpoolRequestCooldown);
     event UnpoolWaitingPeriodUpdated(uint256 unpoolWaitingPeriod);
@@ -100,6 +103,15 @@ contract Api3Pool is Ownable, EpochUtils {
         {
             api3Token = IApi3Token(api3TokenAddress);
         }
+
+
+    function updateInflationManager(address inflationManagerAddress)
+        external
+        onlyOwner
+    {
+        inflationManager = IInflationManager(inflationManagerAddress);
+        emit InflationManagerUpdated(inflationManagerAddress);
+    }
 
     function updateRewardVestingPeriod(uint256 _rewardVestingPeriod)
         external

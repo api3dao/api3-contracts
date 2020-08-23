@@ -67,15 +67,14 @@ contract InflationManager is IInflationManager {
         override
       {
           uint256 currentEpochNumber = epochUtils.getCurrentEpochNumber();
-          require(
-              !mintedInflationaryRewardsForEpoch[currentEpochNumber],
-              "Inflationary rewards for this epoch has already been minted"
-              );
-          uint256 amount = getDeltaTokenSupply(currentEpochNumber);
-          api3Token.mint(address(this), amount);
-          api3Token.approve(address(api3Pool), amount);
-          api3Pool.addVestedRewards(address(this), amount);
-          mintedInflationaryRewardsForEpoch[currentEpochNumber] = true;
+          if (!mintedInflationaryRewardsForEpoch[currentEpochNumber])
+          {
+              uint256 amount = getDeltaTokenSupply(currentEpochNumber);
+              api3Token.mint(address(this), amount);
+              api3Token.approve(address(api3Pool), amount);
+              api3Pool.addVestedRewards(address(this), amount);
+              mintedInflationaryRewardsForEpoch[currentEpochNumber] = true;
+          }
       }
 
     function getDeltaTokenSupply(uint256 indEpoch)

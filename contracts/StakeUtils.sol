@@ -32,6 +32,8 @@ contract StakeUtils is VestingUtils {
     function collect(address userAddress)
         external
     {
+        inflationManager.mintInflationaryRewardsToPool();
+
         uint256 currentEpochNumber = getCurrentEpochNumber();
         uint256 previousEpochNumber = currentEpochNumber.sub(1);
         uint256 twoPreviousEpochNumber = currentEpochNumber.sub(2);
