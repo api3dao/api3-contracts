@@ -3,7 +3,7 @@ pragma solidity >=0.6.8;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./interfaces/IApi3Token.sol";
-import "./interfaces/IApi3Pool.sol";
+import "./interfaces/ITransferUtils.sol";
 import "./interfaces/IEpochUtils.sol";
 import "./interfaces/IInflationManager.sol";
 
@@ -30,7 +30,7 @@ contract InflationManager is IInflationManager {
     uint256 public constant DECAY_PERIOD = 260;
 
     IApi3Token public immutable api3Token;
-    IApi3Pool public immutable api3Pool;
+    ITransferUtils public immutable api3Pool;
     IEpochUtils public immutable epochUtils;
     mapping(uint256 => bool) private mintedInflationaryRewardsForEpoch;
     uint256[] public weeklySupplyCoeffs;
@@ -45,7 +45,7 @@ contract InflationManager is IInflationManager {
         public
         {
             api3Token = IApi3Token(api3TokenAddress);
-            api3Pool = IApi3Pool(api3PoolAddress);
+            api3Pool = ITransferUtils(api3PoolAddress);
             epochUtils = IEpochUtils(api3PoolAddress);
             startEpoch = _startEpoch;
             terminalEpoch = _startEpoch.add(DECAY_PERIOD);

@@ -1,12 +1,12 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.6.8;
 
-import "./InterfaceUtils.sol";
 import "./EpochUtils.sol";
-import "./interfaces/IApi3Pool.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/IApi3Token.sol";
 
 
-contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
+contract Api3Pool is Ownable, EpochUtils {
     enum ClaimStatus { Pending, Accepted, Denied }
 
     struct Vesting
@@ -14,13 +14,6 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
         address userAddress;
         uint256 amount;
         uint256 epoch;
-    }
-
-    struct Claim
-    {
-        address beneficiary;
-        uint256 amount;
-        ClaimStatus status;
     }
 
     struct Iou
@@ -31,391 +24,105 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
         ClaimStatus redemptionCondition;
     }
 
+    struct Claim
+    {
+        address beneficiary;
+        uint256 amount;
+        ClaimStatus status;
+    }
+
+    IApi3Token public immutable api3Token;
+    address public claimsManager;
+
     // User balances, includes vested and unvested funds (not IOUs)
-    mapping(address => uint256) private balances;
+    mapping(address => uint256) internal balances;
     // User unvested funds
-    mapping(address => uint256) private unvestedFunds;
+    mapping(address => uint256) internal unvestedFunds;
 
+    // ~~~~~~Pooling~~~~~~
     // Total funds in the pool
-    uint256 private totalPoolFunds;
+    uint256 internal totalPoolFunds = 1;
     // Total number of pool shares
-    uint256 private totalPoolShares;
+    uint256 internal totalPoolShares = 1;
     // User pool shares
-    mapping(address => uint256) private poolShares;
+    mapping(address => uint256) internal poolShares;
+    // Epochs when users made their last unpool requests
+    mapping(address => uint256) internal unpoolRequestEpochs;
+    uint256 internal unpoolRequestCooldown; // in epochs (set to 0 for now)
+    uint256 internal unpoolWaitingPeriod; // in epochs (set to 0 for now)
+    // ~~~~~~Pooling~~~~~~
 
+    // ~~~~~~Staking~~~~~~
     // Total staked pool shares at each epoch
-    mapping(uint256 => uint256) private totalStakesPerEpoch;
+    mapping(uint256 => uint256) internal totalStakesAtEpoch;
     // User staked pool shares at each epoch
-    mapping(address => mapping(uint256 => uint256)) private stakesPerEpoch;
-
+    mapping(address => mapping(uint256 => uint256)) internal stakesAtEpoch;
     // Total rewards to be vested at each epoch (e.g., inflationary)
-    mapping(uint256 => uint256) private vestedRewardsPerEpoch;
-    mapping(uint256 => uint256) private unpaidVestedRewardsPerEpoch;
+    mapping(uint256 => uint256) internal vestedRewardsAtEpoch;
+    mapping(uint256 => uint256) internal unpaidVestedRewardsAtEpoch;
     // Total rewards received instantly at each epoch (e.g., revenue distribution)
-    mapping(uint256 => uint256) private instantRewardsPerEpoch;
-    mapping(uint256 => uint256) private unpaidInstantRewardsPerEpoch;
+    mapping(uint256 => uint256) internal instantRewardsAtEpoch;
+    mapping(uint256 => uint256) internal unpaidInstantRewardsAtEpoch;
+    uint256 internal rewardVestingPeriod = 52; // in epochs
+    // ~~~~~~Staking~~~~~~
 
-    // The epoch when the user made their last unpool request
-    mapping(address => uint256) private unpoolRequestEpochs;
+    // ~~~~~~Claims~~~~~~
+    uint256 internal noClaims;
+    mapping(bytes32 => Claim) internal claims;
+    bytes32[] internal activeClaims;
+    uint256 internal totalActiveClaimsAmount;
+    // ~~~~~~Claims~~~~~~
 
-    uint256 private noVestings;
-    mapping(bytes32 => Vesting) private vestings;
+    // ~~~~~~IOUs~~~~~~
+    uint256 internal noIous;
+    mapping(bytes32 => Iou) internal ious;
+    // ~~~~~~IOUs~~~~~~
 
-    uint256 private noClaims;
-    mapping(bytes32 => Claim) private claims;
-    bytes32[] private activeClaims;
+    // ~~~~~~Vesting~~~~~~
+    uint256 internal noVestings;
+    mapping(bytes32 => Vesting) internal vestings;
+    // ~~~~~~Vesting~~~~~~
 
-    uint256 private noIous;
-    mapping(bytes32 => Iou) private ious;
-    
-    // TODO: Make these updatable
-    uint256 private unpoolRequestCooldown = 4; // in epochs
-    uint256 private unpoolWaitingPeriod = 2; // in epochs
-    uint256 private rewardVestingPeriod = 52; // in epochs
+    event RewardVestingPeriodUpdated(uint256 rewardVestingPeriod);
+    event UnpoolRequestCooldownUpdated(uint256 unpoolRequestCooldown);
+    event UnpoolWaitingPeriodUpdated(uint256 unpoolWaitingPeriod);
 
     constructor(
         address api3TokenAddress,
         uint256 epochPeriodInSeconds,
         uint256 firstEpochStartTimestamp
         )
-        InterfaceUtils(api3TokenAddress)
         EpochUtils(
             epochPeriodInSeconds,
             firstEpochStartTimestamp
             )
         public
-        {}
-
-    function deposit(
-        address sourceAddress,
-        uint256 amount,
-        address userAddress,
-        uint256 vestingEpoch
-        )
-        external
-    {
-        api3Token.transferFrom(sourceAddress, address(this), amount);
-        balances[userAddress] = balances[userAddress].add(amount);
-        if (vestingEpoch != 0)
         {
-            createVesting(userAddress, amount, vestingEpoch);
-        }
-    }
-
-    function vest(bytes32 vestingId)
-        external
-    {
-        Vesting memory vesting = vestings[vestingId];
-        require(getCurrentEpochNumber() < vesting.epoch, "Have to wait until vesting.epoch to vest");
-        unvestedFunds[vesting.userAddress] = unvestedFunds[vesting.userAddress].sub(vesting.amount);
-        delete vestings[vestingId];
-    }
-
-    function redeem(bytes32 iouId)
-        external
-    {
-        Iou memory iou = ious[iouId];
-        uint256 amountInTokens = convertSharesToFunds(iou.amountInShares);
-        if (iou.redemptionCondition == ClaimStatus.Denied)
-        {
-            require(
-                claims[iou.claimId].status == ClaimStatus.Denied,
-                "To redeem this IOU, the respective claim has to be denied"
-                );
-            // Remove the ghost pool shares
-            totalPoolShares = totalPoolShares.sub(iou.amountInShares);
-            totalPoolFunds = totalPoolFunds.sub(amountInTokens);
-        }
-        else if (iou.redemptionCondition == ClaimStatus.Accepted)
-        {
-            require(
-                claims[iou.claimId].status == ClaimStatus.Accepted,
-                "To redeem this IOU, the respective claim has to be accepted"
-                );
-        }
-        balances[iou.userAddress] = balances[iou.userAddress].add(amountInTokens);
-        delete vestings[iouId];
-    }
-
-    function withdraw(
-        address destinationAddress,
-        uint256 amount
-        )
-        external
-    {
-        address userAddress = msg.sender;
-        uint256 unvested = unvestedFunds[userAddress];
-        uint256 pooled = getPooledFundsOfUser(userAddress);
-        uint256 nonWithdrawable = unvested > pooled ? unvested: pooled;
-        uint256 balance = balances[userAddress];
-        uint256 withdrawable = balance.sub(nonWithdrawable);
-        require(withdrawable >= amount, "Not enough withdrawable funds");
-        balances[userAddress] = balance.sub(amount);
-        api3Token.transferFrom(address(this), destinationAddress, amount);
-    }
-
-    function pool(uint256 amount)
-        external
-    {
-        address userAddress = msg.sender;
-        uint256 poolable = balances[userAddress].sub(getPooledFundsOfUser(userAddress));
-        require(poolable >= amount, "Not enough poolable funds");
-        uint256 poolShare = convertFundsToShares(amount);
-        poolShares[userAddress] = poolShares[userAddress].add(poolShare);
-        totalPoolShares = totalPoolShares.add(poolShare);
-        totalPoolFunds = totalPoolFunds.add(amount);
-        
-        // Create the IOUs
-        for (uint256 ind = 0; ind < activeClaims.length; ind++)
-        {
-            bytes32 claimId = activeClaims[ind];
-            uint256 totalPoolFundsAfterClaimPayout = totalPoolFunds.sub(claims[claimId].amount);
-            uint256 poolSharesRequiredToNotSufferLoss = amount.mul(totalPoolShares).div(totalPoolFundsAfterClaimPayout);
-            uint256 iouAmountInShares = poolShare.sub(poolSharesRequiredToNotSufferLoss);
-            createIou(userAddress, iouAmountInShares, claimId, ClaimStatus.Accepted);
-        }
-    }
-
-    /// If a user has made a request to unpool at epoch t, they can't repeat
-    /// their request at t+1 to postpone their unpooling to one epoch later.
-    function requestToUnpool()
-        external
-    {
-        address userAddress = msg.sender;
-        uint256 currentEpochNumber = getCurrentEpochNumber();
-        require(
-            unpoolRequestEpochs[userAddress].add(unpoolRequestCooldown) <= currentEpochNumber,
-            "Have to wait at least unpoolRequestCooldown to request a new unpool"
-            );
-        unpoolRequestEpochs[userAddress] = currentEpochNumber;
-    }
-
-    /// This doesn't take unpoolWaitingPeriod changing after the unpool request
-    /// into account
-    function unpool(uint256 amount)
-        external
-    {
-        address userAddress = msg.sender;
-        uint256 currentEpochNumber = getCurrentEpochNumber();
-        require(
-            unpoolRequestEpochs[userAddress].add(unpoolWaitingPeriod) == currentEpochNumber,
-            "Have to unpool unpoolWaitingPeriod epochs after the request"
-            );
-        uint256 pooled = getPooledFundsOfUser(userAddress);
-        require(
-            pooled >= amount,
-            "Not enough unpoolable funds"
-        );
-        /// Check if the user has staked in this epoch before unpooling and
-        /// reduce their staked amount to their updated pooled amount if so
-        pooled = pooled.sub(amount);
-        uint256 nextEpochNumber = currentEpochNumber.add(1);
-        uint256 staked = stakesPerEpoch[userAddress][nextEpochNumber];
-        if (staked > pooled)
-        {
-            totalStakesPerEpoch[nextEpochNumber] = totalStakesPerEpoch[nextEpochNumber]
-                .sub(staked.sub(pooled));
-            stakesPerEpoch[userAddress][nextEpochNumber] = pooled;
+            api3Token = IApi3Token(api3TokenAddress);
         }
 
-        uint256 poolShare = convertFundsToShares(amount);
-
-        // Create the IOUs
-        uint256 totalIouInTokens = 0;
-        for (uint256 ind = 0; ind < activeClaims.length; ind++)
-        {
-            bytes32 claimId = activeClaims[ind];
-            uint256 tokensRequiredToNotSufferLoss = poolShare.mul(claims[claimId].amount).div(totalPoolShares);
-            uint256 totalPoolFundsAfterClaimPayout = totalPoolFunds.sub(claims[claimId].amount);
-            uint256 poolSharesRequiredToNotSufferLoss = tokensRequiredToNotSufferLoss
-                .mul(totalPoolShares).div(totalPoolFundsAfterClaimPayout);
-            createIou(userAddress, poolSharesRequiredToNotSufferLoss, claimId, ClaimStatus.Denied);
-            totalIouInTokens = totalIouInTokens.add(tokensRequiredToNotSufferLoss);
-        }
-
-        poolShares[userAddress] = poolShares[userAddress].sub(poolShare);
-        balances[userAddress] = balances[userAddress].sub(totalIouInTokens);
-
-        // Leave the IOU amount in the pool as ghost shares
-        amount = amount.sub(totalIouInTokens);
-
-        poolShare = convertFundsToShares(amount);
-        totalPoolShares = totalPoolShares.sub(poolShare);
-        totalPoolFunds = totalPoolFunds.sub(amount);
-    }
-
-    function stake(address userAddress)
+    function updateRewardVestingPeriod(uint256 _rewardVestingPeriod)
         external
+        onlyOwner
     {
-        uint256 nextEpochNumber = getCurrentEpochNumber().add(1);
-        uint256 sharesStaked = stakesPerEpoch[userAddress][nextEpochNumber];
-        uint256 sharesToStake = poolShares[userAddress];
-        stakesPerEpoch[userAddress][nextEpochNumber] = sharesToStake;
-        totalStakesPerEpoch[nextEpochNumber] = totalStakesPerEpoch[nextEpochNumber]
-            .add(sharesToStake.sub(sharesStaked));
+        rewardVestingPeriod = _rewardVestingPeriod;
+        emit RewardVestingPeriodUpdated(rewardVestingPeriod);
     }
 
-    function collect(address userAddress)
+    function updateUnpoolRequestCooldown(uint256 _unpoolRequestCooldown)
         external
+        onlyOwner
     {
-        uint256 currentEpochNumber = getCurrentEpochNumber();
-        uint256 previousEpochNumber = currentEpochNumber.sub(1);
-        uint256 twoPreviousEpochNumber = currentEpochNumber.sub(2);
-        uint256 totalStakesInPreviousEpoch = totalStakesPerEpoch[previousEpochNumber];
-        uint256 stakeInPreviousEpoch = stakesPerEpoch[userAddress][previousEpochNumber];
-
-        // Carry over vested rewards from two epochs ago
-        if (unpaidVestedRewardsPerEpoch[twoPreviousEpochNumber] != 0)
-        {
-            vestedRewardsPerEpoch[previousEpochNumber] = vestedRewardsPerEpoch[previousEpochNumber]
-                .add(unpaidVestedRewardsPerEpoch[twoPreviousEpochNumber]);
-            unpaidVestedRewardsPerEpoch[twoPreviousEpochNumber] = 0;
-        }
-
-        uint256 vestedRewards = vestedRewardsPerEpoch[previousEpochNumber]
-            .mul(totalStakesInPreviousEpoch)
-            .div(stakeInPreviousEpoch);
-        balances[userAddress] = balances[userAddress].add(vestedRewards);
-        unpaidVestedRewardsPerEpoch[previousEpochNumber] = unpaidVestedRewardsPerEpoch[previousEpochNumber]
-            .sub(vestedRewards);
-        createVesting(userAddress, vestedRewards, currentEpochNumber.add(rewardVestingPeriod));
-
-        // Carry over instant rewards from two epochs ago
-        if (unpaidInstantRewardsPerEpoch[twoPreviousEpochNumber] != 0)
-        {
-            instantRewardsPerEpoch[previousEpochNumber] = instantRewardsPerEpoch[previousEpochNumber]
-                .add(unpaidInstantRewardsPerEpoch[twoPreviousEpochNumber]);
-            unpaidInstantRewardsPerEpoch[twoPreviousEpochNumber] = 0;
-        }
-
-        uint256 instantRewards = instantRewardsPerEpoch[previousEpochNumber]
-            .mul(totalStakesInPreviousEpoch)
-            .div(stakeInPreviousEpoch);
-        balances[userAddress] = balances[userAddress].add(instantRewards);
-        unpaidInstantRewardsPerEpoch[previousEpochNumber] = unpaidInstantRewardsPerEpoch[previousEpochNumber]
-            .sub(instantRewards);
+        unpoolRequestCooldown = _unpoolRequestCooldown;
+        emit UnpoolRequestCooldownUpdated(unpoolRequestCooldown);
     }
 
-    function createVesting(
-        address userAddress,
-        uint256 amount,
-        uint256 vestingEpoch
-        )
-        internal
-    {
-        unvestedFunds[userAddress] = unvestedFunds[userAddress].add(amount);
-        bytes32 vestingId = keccak256(abi.encodePacked(
-            noVestings,
-            this
-            ));
-        noVestings = noVestings.add(1);
-        vestings[vestingId] = Vesting({
-            userAddress: userAddress,
-            amount: amount,
-            epoch: vestingEpoch
-            });
-    }
-
-    function createIou(
-        address userAddress,
-        uint256 amountInShares,
-        bytes32 claimId,
-        ClaimStatus redemptionCondition
-        )
-        internal
-    {
-        bytes32 iouId = keccak256(abi.encodePacked(
-            noIous,
-            this
-            ));
-        noIous = noIous.add(1);
-        ious[iouId] = Iou({
-            userAddress: userAddress,
-            amountInShares: amountInShares,
-            claimId: claimId,
-            redemptionCondition: redemptionCondition
-            });
-    }
-
-    function createClaim(
-        address beneficiary,
-        uint256 amount
-        )
+    function updateUnpoolWaitingPeriod(uint256 _unpoolWaitingPeriod)
         external
-        onlyClaimsManager
+        onlyOwner
     {
-        require(totalPoolFunds >= amount, "Not enough funds in the collateral pool");
-        bytes32 claimId = keccak256(abi.encodePacked(
-            noClaims,
-            this
-            ));
-        noClaims = noClaims.add(1);
-        claims[claimId] = Claim({
-            beneficiary: beneficiary,
-            amount: amount,
-            status: ClaimStatus.Pending
-            });
-        activeClaims.push(claimId);
-    }
-
-    function acceptClaim(bytes32 claimId)
-        external
-        onlyClaimsManager
-    {
-        require(deactivateClaim(claimId), "No such active claim");
-        claims[claimId].status = ClaimStatus.Accepted;
-        Claim memory claim = claims[claimId];
-        api3Token.transferFrom(address(this), claim.beneficiary, claim.amount);
-    }
-
-    function denyClaim(bytes32 claimId)
-        external
-        onlyClaimsManager
-    {
-        require(deactivateClaim(claimId), "No such active claim");
-        claims[claimId].status = ClaimStatus.Denied;
-    }
-
-    function deactivateClaim(bytes32 claimId)
-        internal
-        returns(bool success)
-    {
-        for (uint256 ind = 0; ind < activeClaims.length; ind++)
-        {
-            if (activeClaims[ind] == claimId)
-            {
-                delete activeClaims[ind];
-                return true;
-            }
-        }
-        return false;
-    }
-
-    function addVestedRewards(
-        address sourceAddress,
-        uint256 amount
-        )
-        external
-        override
-    {
-        uint256 currentEpochNumber = getCurrentEpochNumber();
-        uint256 updatedVestedRewards = vestedRewardsPerEpoch[currentEpochNumber].add(amount);
-        vestedRewardsPerEpoch[currentEpochNumber] = updatedVestedRewards;
-        unpaidVestedRewardsPerEpoch[currentEpochNumber] = updatedVestedRewards;
-        api3Token.transferFrom(sourceAddress, address(this), amount);
-    }
-
-    function addRewards(
-        address sourceAddress,
-        uint256 amount
-        )
-        external
-    {
-        uint256 currentEpochNumber = getCurrentEpochNumber();
-        uint256 updatedInstantRewards = instantRewardsPerEpoch[currentEpochNumber].add(amount);
-        instantRewardsPerEpoch[currentEpochNumber] = updatedInstantRewards;
-        unpaidInstantRewardsPerEpoch[currentEpochNumber] = updatedInstantRewards;
-        api3Token.transferFrom(sourceAddress, address(this), amount);
+        unpoolWaitingPeriod = _unpoolWaitingPeriod;
+        emit UnpoolWaitingPeriodUpdated(unpoolWaitingPeriod);
     }
 
     function getPooledFundsOfUser(address userAddress)
@@ -426,26 +133,19 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
         pooled = totalPoolShares.mul(totalPoolFunds).div(poolShares[userAddress]);
     }
 
-    function convertFundsToShares(uint256 amountInFunds)
+    function convertFundsToShares(uint256 amount)
         internal
         view
         returns(uint256 amountInShares)
     {
-        if (totalPoolFunds == 0)
-        {
-            amountInShares = amountInFunds;
-        }
-        else
-        {
-            amountInShares = amountInFunds.mul(totalPoolShares).div(totalPoolFunds);
-        }
+        amountInShares = amount.mul(totalPoolShares).div(totalPoolFunds);
     }
 
     function convertSharesToFunds(uint256 amountInShares)
         internal
         view
-        returns(uint256 amountInFunds)
+        returns(uint256 amount)
     {
-        amountInFunds = amountInShares.mul(totalPoolFunds).div(totalPoolShares);
+        amount = amountInShares.mul(totalPoolFunds).div(totalPoolShares);
     }
 }

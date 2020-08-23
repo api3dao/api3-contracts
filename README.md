@@ -28,6 +28,8 @@ Received_tokens = (Unpooled_shares / Total_shares) * Total_tokens
 Paying out insurance claims depreciates pool shares, as it decreases `Total_tokens` without changing `Total_shares`.
 This is the mechanic that has all pooled parties contribute to claim payout.
 
+The pool is seeded with 1 (Wei) token and 1 share to avoid divide by zero errors.
+
 **Staking:**
 The action that the user has to take every epoch to receive staking rewards and voting rights in the next epoch.
 Note that the user stakes pool shares, rather than the tokens themselves.
@@ -38,7 +40,7 @@ The user is free to pool and stake these funds.
 A transaction is needed to vest the tokens when the vesting has matured.
 
 **IOU:**
-A user can redeem their IOUs to receive a specified amount of funds with a transaction if/when a specificed claim is finalized with a specified outcome (see below for further details).
+A user can redeem their IOUs to receive a specified amount of funds (denoted in number of shares) with a transaction if/when a specificed claim is finalized with a specified outcome (see below for further details).
 IOUs can't be pooled or staked.
 
 ## How to stake?
@@ -65,8 +67,7 @@ The reward amounts will be proportional to the pool shares the user has staked t
 ## How to receive voting power?
 
 The user will automatically receive voting power proportional to the pool shares they have staked in the previous epoch.
-The DAO reads from a `getVotingPower(address, blockNumber)` method to get the voting power of an address for a particular proposal.
-This method will read from `stakesPerEpoch` in this contract.
+The DAO reads from a `getVotingPower(userAddress, timestamp)` method to get the voting power of an address for a particular proposal.
 
 ## How to withdraw staked/pooled funds?
 
@@ -110,18 +111,26 @@ Both cases have trivial solutions:
 1. The user can withdraw 250 tokens and forfeit the remaining 250.
 2. The user can accept the potential undeserved 250 token loss.
 
-Neither of these is acceptable.
-Instead, we utilize IOUs:
-1. **Type-1**:
-The user withdraws 250 tokens, and receives an IOU for 250 tokens that is redeemable if/when the respective claim is denied.
-1. **Type-2**:
-The user pools their 1000 tokens, and receives an IOU for X tokens that is redeemable if/when the respective claim is accepted.
+Neither of these is acceptable, so we utilize IOUs.
+An IOU is a promise to the user to pay back tokens corresponding to the amount of pool shares that would recover their loss right after the payout.
+Let us continue from the examples above
 
-X = The amount of tokens corresponding to pool shares effectively lost during the claim payout.
-In other words, the amount that this IOU pays back is kept in pool shares rather than tokens.
+1. Say there were 1000 pool shares for 1000 tokens at the start.
+If the claim was denied, the user would have suffered 250 tokens worth of undeserved loss.
+Then, the user is provided an IOU worth of 250 pool shares that can be redeemed if/when the claim is denied.
 
-If an additional claim is paid out before the user redeems their IOU type-2, the shares will further depreciate and the user will not be fully compensated (which would be their fault).
-The alternative (keeping the amount in absolute tokens) may result in the pool owing more than it can afford, which is a worse case than lazy users being punished.
+In addition, the 250 tokens and the corresponding shares are left in the pool to remain as collateral.
+These funds/shares without owners are called _ghost shares_ and are removed from the pool if/when the respective IOU is redeemed.
+
+2. Again, say there were 1000 pool shares for 1000 tokens at the start.
+If the claim was accepted, the user would have suffered 250 tokens worth of undeserved loss.
+After the payout, there would have been 1500 tokens for 1000 shares.
+Then, the user is provided an IOU worth of (1000/1500)*250 = 167 shares that can be redeemed if/when the claim is accepted.
+
+Note that pool share value decreases with each claim payout.
+Therefore, the users should redeem their eligible IOUs as soon as a claim is finalized.
+However, there is an edge case where an independent claim starts and ends before the IOU becomes eligible for redemption.
+This means that IOUs are partly under collateral risk, even though they do not grant staking rewards or voting power.
 
 ## Keeping track of vestings, IOUs and claims
 
