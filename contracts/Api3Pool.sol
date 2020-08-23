@@ -123,6 +123,11 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
                 "To redeem this IOU, the respective claim has to be denied"
                 );
             balances[iou.userAddress] = balances[iou.userAddress].add(iou.amount);
+
+            // Remove the ghost pool shares
+            uint256 iouAmountInShares = convertFundsToShares(iou.amount);
+            totalPoolShares = totalPoolShares.sub(iouAmountInShares);
+            totalPoolFunds = totalPoolFunds.sub(iou.amount);
         }
         else
         {
@@ -232,8 +237,9 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
 
         poolShares[userAddress] = poolShares[userAddress].sub(poolShare);
 
-        // Leave the IOU amount in the pool
+        // Leave the IOU amount in the pool as ghost shares
         amount = amount.sub(totalIouFunds);
+
         poolShare = convertFundsToShares(amount);
         totalPoolShares = totalPoolShares.sub(poolShare);
         totalPoolFunds = totalPoolFunds.sub(amount);
