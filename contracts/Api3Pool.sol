@@ -231,11 +231,11 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
             bytes32 claimId = activeClaims[ind];
             uint256 iouAmount = poolShare.mul(claims[claimId].amount).div(totalPoolShares);
             createIou(userAddress, iouAmount, claimId, IouType.InTokens);
-            balances[userAddress] = balances[userAddress].sub(iouAmount);
             totalIouFunds = totalIouFunds.add(iouAmount);
         }
 
         poolShares[userAddress] = poolShares[userAddress].sub(poolShare);
+        balances[userAddress] = balances[userAddress].sub(totalIouFunds);
 
         // Leave the IOU amount in the pool as ghost shares
         amount = amount.sub(totalIouFunds);
