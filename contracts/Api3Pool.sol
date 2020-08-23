@@ -8,7 +8,6 @@ import "./interfaces/IApi3Pool.sol";
 
 contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
     enum ClaimStatus { Pending, Accepted, Denied }
-    enum IouType { InTokens, InShares }
 
     struct Vesting
     {
@@ -27,9 +26,9 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
     struct Iou
     {
         address userAddress;
-        uint256 amount;
+        uint256 amountInShares;
         bytes32 claimId;
-        IouType iouType;
+        ClaimStatus redemptionCondition;
     }
 
     // User balances, includes vested and unvested funds (not IOUs)
@@ -116,28 +115,25 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
         external
     {
         Iou memory iou = ious[iouId];
-        if (iou.iouType == IouType.InTokens)
+        uint256 amountInTokens = convertSharesToFunds(iou.amountInShares);
+        if (iou.redemptionCondition == ClaimStatus.Denied)
         {
             require(
                 claims[iou.claimId].status == ClaimStatus.Denied,
                 "To redeem this IOU, the respective claim has to be denied"
                 );
-            balances[iou.userAddress] = balances[iou.userAddress].add(iou.amount);
-
             // Remove the ghost pool shares
-            uint256 iouAmountInShares = convertFundsToShares(iou.amount);
-            totalPoolShares = totalPoolShares.sub(iouAmountInShares);
-            totalPoolFunds = totalPoolFunds.sub(iou.amount);
+            totalPoolShares = totalPoolShares.sub(iou.amountInShares);
+            totalPoolFunds = totalPoolFunds.sub(amountInTokens);
         }
-        else
+        else if (iou.redemptionCondition == ClaimStatus.Accepted)
         {
             require(
                 claims[iou.claimId].status == ClaimStatus.Accepted,
                 "To redeem this IOU, the respective claim has to be accepted"
                 );
-            uint256 amountInTokens = convertSharesToFunds(iou.amount);
-            balances[iou.userAddress] = balances[iou.userAddress].add(amountInTokens);
         }
+        balances[iou.userAddress] = balances[iou.userAddress].add(amountInTokens);
         delete vestings[iouId];
     }
 
@@ -176,7 +172,7 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
             uint256 totalPoolFundsAfterClaimPayout = totalPoolFunds.sub(claims[claimId].amount);
             uint256 poolSharesRequiredToNotSufferLoss = amount.mul(totalPoolShares).div(totalPoolFundsAfterClaimPayout);
             uint256 iouAmountInShares = poolShare.sub(poolSharesRequiredToNotSufferLoss);
-            createIou(userAddress, iouAmountInShares, claimId, IouType.InShares);
+            createIou(userAddress, iouAmountInShares, claimId, ClaimStatus.Accepted);
         }
     }
 
@@ -225,20 +221,23 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
         uint256 poolShare = convertFundsToShares(amount);
 
         // Create the IOUs
-        uint256 totalIouFunds = 0;
+        uint256 totalIouInTokens = 0;
         for (uint256 ind = 0; ind < activeClaims.length; ind++)
         {
             bytes32 claimId = activeClaims[ind];
-            uint256 iouAmount = poolShare.mul(claims[claimId].amount).div(totalPoolShares);
-            createIou(userAddress, iouAmount, claimId, IouType.InTokens);
-            totalIouFunds = totalIouFunds.add(iouAmount);
+            uint256 tokensRequiredToNotSufferLoss = poolShare.mul(claims[claimId].amount).div(totalPoolShares);
+            uint256 totalPoolFundsAfterClaimPayout = totalPoolFunds.sub(claims[claimId].amount);
+            uint256 poolSharesRequiredToNotSufferLoss = tokensRequiredToNotSufferLoss
+                .mul(totalPoolShares).div(totalPoolFundsAfterClaimPayout);
+            createIou(userAddress, poolSharesRequiredToNotSufferLoss, claimId, ClaimStatus.Denied);
+            totalIouInTokens = totalIouInTokens.add(tokensRequiredToNotSufferLoss);
         }
 
         poolShares[userAddress] = poolShares[userAddress].sub(poolShare);
-        balances[userAddress] = balances[userAddress].sub(totalIouFunds);
+        balances[userAddress] = balances[userAddress].sub(totalIouInTokens);
 
         // Leave the IOU amount in the pool as ghost shares
-        amount = amount.sub(totalIouFunds);
+        amount = amount.sub(totalIouInTokens);
 
         poolShare = convertFundsToShares(amount);
         totalPoolShares = totalPoolShares.sub(poolShare);
@@ -319,9 +318,9 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
 
     function createIou(
         address userAddress,
-        uint256 amount,
+        uint256 amountInShares,
         bytes32 claimId,
-        IouType iouType
+        ClaimStatus redemptionCondition
         )
         internal
     {
@@ -332,9 +331,9 @@ contract Api3Pool is InterfaceUtils, EpochUtils, IApi3Pool {
         noIous = noIous.add(1);
         ious[iouId] = Iou({
             userAddress: userAddress,
-            amount: amount,
+            amountInShares: amountInShares,
             claimId: claimId,
-            iouType: iouType
+            redemptionCondition: redemptionCondition
             });
     }
 
