@@ -4,7 +4,7 @@ async function main() {
   const Api3Token = await ethers.getContractFactory("Api3Token");
   const api3Token = await Api3Token.deploy();
 
-  const Api3Pool = await ethers.getContractFactory("Api3Pool");
+  const Api3Pool = await ethers.getContractFactory("TransferUtils");
   const api3Pool = await Api3Pool.deploy(
     api3Token.address,
     60 * 24 * 7,

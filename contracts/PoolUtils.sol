@@ -56,6 +56,7 @@ contract PoolUtils is IouUtils, IPoolUtils {
             uint256 iouAmountInShares = poolSharesRequiredToNotSufferFromPayout.sub(poolShare);
             createIou(userAddress, iouAmountInShares, claimId, ClaimStatus.Accepted);
         }
+        emit Pooled(userAddress, amount);
     }
 
     /// @notice Creates a request to unpool, which must be done
@@ -75,6 +76,7 @@ contract PoolUtils is IouUtils, IPoolUtils {
             "Have to wait at least unpoolRequestCooldown to request a new unpool"
             );
         unpoolRequestEpochs[userAddress] = currentEpochIndex;
+        emit RequestedToUnpool(userAddress);
     }
 
     /// @notice Has the user unpool amount number of tokens worth of shares
@@ -141,5 +143,6 @@ contract PoolUtils is IouUtils, IPoolUtils {
                 .sub(staked.sub(updatedPoolShare));
             stakesAtEpoch[userAddress][nextEpochIndex] = updatedPoolShare;
         }
+        emit Unpooled(userAddress, amount);
     }
 }

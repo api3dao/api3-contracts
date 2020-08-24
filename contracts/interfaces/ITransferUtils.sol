@@ -3,6 +3,37 @@ pragma solidity 0.6.12;
 
 
 interface ITransferUtils {
+    event Deposited(
+        address indexed sourceAddress,
+        uint256 amount,
+        address indexed userAddress
+        );
+    
+    event DepositedWithVesting(
+        address indexed sourceAddress,
+        uint256 amount,
+        address indexed userAddress,
+        uint256 vestingEpoch
+        );
+    
+    event Withdrawn(
+        address indexed userAddress,
+        address destinationAddress,
+        uint256 amount
+        );
+    
+    event AddedVestedRewards(
+        address indexed sourceAddress,
+        uint256 amount,
+        uint256 indexed epochIndex
+        );
+    
+    event AddedInstantRewards(
+        address indexed sourceAddress,
+        uint256 amount,
+        uint256 indexed epochIndex
+        );
+
     function deposit(
         address sourceAddress,
         uint256 amount,

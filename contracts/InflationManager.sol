@@ -113,6 +113,7 @@ contract InflationManager is IInflationManager {
               api3Token.approve(address(api3PoolTransfer), amount);
               api3PoolTransfer.addVestedRewards(address(this), amount);
               mintedInflationaryRewardsAtEpoch[currentEpochIndex] = true;
+              emit InflationaryRewardsMinted(currentEpochIndex);
           }
       }
 

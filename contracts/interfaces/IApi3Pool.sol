@@ -5,6 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 interface IApi3Pool {
+    enum ClaimStatus { Pending, Accepted, Denied }
+
     event InflationManagerUpdated(address inflationManagerAddress);
     event ClaimsManagerUpdated(address claimsManager);
     event RewardVestingPeriodUpdated(uint256 rewardVestingPeriod);

@@ -49,6 +49,7 @@ contract ClaimUtils is GetterUtils, IClaimUtils {
             status: ClaimStatus.Pending
             });
         activeClaims.push(claimId);
+        emit ClaimCreated(claimId, beneficiary, amount);
     }
 
     /// @notice Accepts an insurance claim and pays out
@@ -64,6 +65,7 @@ contract ClaimUtils is GetterUtils, IClaimUtils {
         Claim memory claim = claims[claimId];
         totalActiveClaimsAmount = totalActiveClaimsAmount.sub(claim.amount);
         api3Token.transferFrom(address(this), claim.beneficiary, claim.amount);
+        emit ClaimAccepted(claimId);
     }
 
     /// @notice Denies an insurance claim
@@ -77,6 +79,7 @@ contract ClaimUtils is GetterUtils, IClaimUtils {
         require(deactivateClaim(claimId), "No such active claim exists");
         claims[claimId].status = ClaimStatus.Denied;
         totalActiveClaimsAmount = totalActiveClaimsAmount.sub(claims[claimId].amount);
+        emit ClaimDenied(claimId);
     }
 
     /// @notice Removes the claim from activeClaims

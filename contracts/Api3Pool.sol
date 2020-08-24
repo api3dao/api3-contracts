@@ -18,12 +18,6 @@ import "./interfaces/IApi3Pool.sol";
 /// variables because there are some circular dependencies between these
 /// functions.
 contract Api3Pool is Ownable, IApi3Pool {
-    // An insurance claim that is created by the claimsManager has the status
-    // Pending. If/when claimsManager accepts the claim and pays it out, its
-    // status gets updated as Accepted. If/when claimsManager denies the claim,
-    // its status gets updated as Denied.
-    enum ClaimStatus { Pending, Accepted, Denied }
-
     // An insurance claim. claimsManager transfers amount-many API3 tokens to
     // beneficiary if it gets accepted.
     struct Claim

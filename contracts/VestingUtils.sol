@@ -45,6 +45,7 @@ contract VestingUtils is PoolUtils, IVestingUtils {
             amount: amount,
             epoch: vestingEpoch
             });
+        emit VestingCreated(vestingId, userAddress, amount, vestingEpoch);
     }
 
     /// @notice Resolves a vesting
@@ -57,5 +58,6 @@ contract VestingUtils is PoolUtils, IVestingUtils {
         require(getCurrentEpochIndex() >= vesting.epoch, "Cannot vest before vesting.epoch");
         unvestedFunds[vesting.userAddress] = unvestedFunds[vesting.userAddress].sub(vesting.amount);
         delete vestings[vestingId];
+        emit VestingResolved(vestingId);
     }
 }

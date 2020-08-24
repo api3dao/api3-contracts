@@ -48,6 +48,13 @@ contract IouUtils is ClaimUtils, IIouUtils {
             claimId: claimId,
             redemptionCondition: redemptionCondition
             });
+        emit IouCreated(
+            iouId,
+            userAddress,
+            amountInShares,
+            claimId,
+            redemptionCondition
+        );
     }
 
     /// @notice Redeems an IOU
@@ -74,5 +81,6 @@ contract IouUtils is ClaimUtils, IIouUtils {
         }
         balances[iou.userAddress] = balances[iou.userAddress].add(amountInTokens);
         delete ious[iouId];
+        emit IouRedeemed(iouId);
     }
 }

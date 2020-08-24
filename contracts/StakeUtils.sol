@@ -35,6 +35,7 @@ contract StakeUtils is VestingUtils, IStakeUtils {
         stakesAtEpoch[userAddress][nextEpochIndex] = sharesToStake;
         totalStakesAtEpoch[nextEpochIndex] = totalStakesAtEpoch[nextEpochIndex]
             .add(sharesToStake.sub(sharesStaked));
+        emit Staked(userAddress, sharesToStake);
     }
 
     /// @notice Has the user collect rewards from the previous epoch
@@ -87,5 +88,6 @@ contract StakeUtils is VestingUtils, IStakeUtils {
         balances[userAddress] = balances[userAddress].add(instantRewards);
         unpaidInstantRewardsAtEpoch[previousEpochIndex] = unpaidInstantRewardsAtEpoch[previousEpochIndex]
             .sub(instantRewards);
+        emit Collected(userAddress, vestedRewards, instantRewards);
     }
 }

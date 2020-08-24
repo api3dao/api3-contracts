@@ -37,6 +37,7 @@ contract TransferUtils is StakeUtils, ITransferUtils {
     {
         api3Token.transferFrom(sourceAddress, address(this), amount);
         balances[userAddress] = balances[userAddress].add(amount);
+        emit Deposited(sourceAddress, amount, userAddress);
     }
 
     /// @notice Deposits funds for a user, which can then be pooled and staked.
@@ -58,6 +59,7 @@ contract TransferUtils is StakeUtils, ITransferUtils {
         api3Token.transferFrom(sourceAddress, address(this), amount);
         balances[userAddress] = balances[userAddress].add(amount);
         createVesting(userAddress, amount, vestingEpoch);
+        emit DepositedWithVesting(sourceAddress, amount, userAddress, vestingEpoch);
     }
 
     /// @notice Withdraws funds that are not pooled or locked in a vesting
@@ -79,6 +81,7 @@ contract TransferUtils is StakeUtils, ITransferUtils {
         require(withdrawable >= amount, "Not enough withdrawable funds");
         balances[userAddress] = balance.sub(amount);
         api3Token.transferFrom(address(this), destinationAddress, amount);
+        emit Withdrawn(userAddress, destinationAddress, amount);
     }
 
     /// @notice Deposits funds to the vested rewards pool for this epoch
@@ -96,6 +99,7 @@ contract TransferUtils is StakeUtils, ITransferUtils {
         vestedRewardsAtEpoch[currentEpochIndex] = updatedVestedRewards;
         unpaidVestedRewardsAtEpoch[currentEpochIndex] = updatedVestedRewards;
         api3Token.transferFrom(sourceAddress, address(this), amount);
+        emit AddedVestedRewards(sourceAddress, amount, currentEpochIndex);
     }
 
     /// @notice Deposits funds to the instant rewards pool for this epoch
@@ -113,5 +117,6 @@ contract TransferUtils is StakeUtils, ITransferUtils {
         instantRewardsAtEpoch[currentEpochIndex] = updatedInstantRewards;
         unpaidInstantRewardsAtEpoch[currentEpochIndex] = updatedInstantRewards;
         api3Token.transferFrom(sourceAddress, address(this), amount);
+        emit AddedInstantRewards(sourceAddress, amount, currentEpochIndex);
     }
 }
