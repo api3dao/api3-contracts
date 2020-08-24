@@ -1,18 +1,21 @@
-//SPDX-License-Identifier: Unlicense
-pragma solidity ^0.6.8;
+//SPDX-License-Identifier: MIT
+pragma solidity 0.6.12;
 
-import "./Api3Pool.sol";
+import "./GetterUtils.sol";
+import "./interfaces/IClaimUtils.sol";
 
 
-contract ClaimUtils is Api3Pool {
-    event ClaimsManagerUpdated(address claimsManager);
-
+/// @title Contract where the claims logic of the API3 pool is implemented
+contract ClaimUtils is GetterUtils, IClaimUtils {
+    /// @param api3TokenAddress Address of the API3 token contract
+    /// @param epochPeriodInSeconds Length of epochs used to quantize time
+    /// @param firstEpochStartTimestamp Starting timestamp of epoch #1
     constructor(
         address api3TokenAddress,
         uint256 epochPeriodInSeconds,
         uint256 firstEpochStartTimestamp
         )
-        Api3Pool(
+        GetterUtils(
             api3TokenAddress,
             epochPeriodInSeconds,
             firstEpochStartTimestamp
@@ -20,11 +23,17 @@ contract ClaimUtils is Api3Pool {
         public
         {}
 
+    /// @notice Creates an insurance claim record
+    /// @dev Can only be called by the claimsManager address
+    /// @param beneficiary Address that will receive the payout upon
+    /// acceptance of the claim
+    /// @param amount Payout amount
     function createClaim(
         address beneficiary,
         uint256 amount
         )
         external
+        override
         onlyClaimsManager
     {
         totalActiveClaimsAmount = totalActiveClaimsAmount.add(amount);
@@ -42,8 +51,12 @@ contract ClaimUtils is Api3Pool {
         activeClaims.push(claimId);
     }
 
+    /// @notice Accepts an insurance claim and pays out
+    /// @dev Can only be called by the claimsManager address
+    /// @param claimId Claim ID
     function acceptClaim(bytes32 claimId)
         external
+        override
         onlyClaimsManager
     {
         require(deactivateClaim(claimId), "No such active claim exists");
@@ -53,8 +66,12 @@ contract ClaimUtils is Api3Pool {
         api3Token.transferFrom(address(this), claim.beneficiary, claim.amount);
     }
 
+    /// @notice Denies an insurance claim
+    /// @dev Can only be called by the claimsManager address
+    /// @param claimId Claim ID
     function denyClaim(bytes32 claimId)
         external
+        override
         onlyClaimsManager
     {
         require(deactivateClaim(claimId), "No such active claim exists");
@@ -62,6 +79,8 @@ contract ClaimUtils is Api3Pool {
         totalActiveClaimsAmount = totalActiveClaimsAmount.sub(claims[claimId].amount);
     }
 
+    /// @notice Removes the claim from activeClaims
+    /// @param claimId Claim ID 
     function deactivateClaim(bytes32 claimId)
         private
         returns(bool success)
@@ -77,17 +96,10 @@ contract ClaimUtils is Api3Pool {
         return false;
     }
 
-    function updateClaimsManager(address claimsManagerAddress)
-        external
-        onlyOwner
-    {
-        claimsManager = claimsManagerAddress;
-        emit ClaimsManagerUpdated(claimsManager);
-    }
-
+    /// @dev Reverts if the caller is not claimsManager
     modifier onlyClaimsManager()
     {
-        require(msg.sender == claimsManager, "Not authorized to manage claims processes");
+        require(msg.sender == claimsManager, "Caller is not the claims manager");
         _;
     }
 }

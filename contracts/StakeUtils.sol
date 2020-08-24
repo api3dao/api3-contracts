@@ -1,10 +1,15 @@
-//SPDX-License-Identifier: Unlicense
-pragma solidity ^0.6.8;
+//SPDX-License-Identifier: MIT
+pragma solidity 0.6.12;
 
 import "./VestingUtils.sol";
+import "./interfaces/IStakeUtils.sol";
 
 
-contract StakeUtils is VestingUtils {
+/// @title Contract where the staking logic of the API3 pool is implemented
+contract StakeUtils is VestingUtils, IStakeUtils {
+    /// @param api3TokenAddress Address of the API3 token contract
+    /// @param epochPeriodInSeconds Length of epochs used to quantize time
+    /// @param firstEpochStartTimestamp Starting timestamp of epoch #1
     constructor(
         address api3TokenAddress,
         uint256 epochPeriodInSeconds,
@@ -18,57 +23,69 @@ contract StakeUtils is VestingUtils {
         public
         {}
 
+    /// @notice Has the user stake all of their pool shares
+    /// @param userAddress User address
     function stake(address userAddress)
         external
+        override
     {
-        uint256 nextEpochNumber = getCurrentEpochNumber().add(1);
-        uint256 sharesStaked = stakesAtEpoch[userAddress][nextEpochNumber];
+        uint256 nextEpochIndex = getCurrentEpochIndex().add(1);
+        uint256 sharesStaked = stakesAtEpoch[userAddress][nextEpochIndex];
         uint256 sharesToStake = poolShares[userAddress];
-        stakesAtEpoch[userAddress][nextEpochNumber] = sharesToStake;
-        totalStakesAtEpoch[nextEpochNumber] = totalStakesAtEpoch[nextEpochNumber]
+        stakesAtEpoch[userAddress][nextEpochIndex] = sharesToStake;
+        totalStakesAtEpoch[nextEpochIndex] = totalStakesAtEpoch[nextEpochIndex]
             .add(sharesToStake.sub(sharesStaked));
     }
 
+    /// @notice Has the user collect rewards from the previous epoch
+    /// @dev Requires the user to have staked in the two previous epoch
+    /// @param userAddress User address
     function collect(address userAddress)
         external
+        override
     {
+        // Triggers the minting of inflationary rewards for this epoch if it
+        // was not already. Note that this does not affect the rewards to be
+        // received below, but rewards to be received in the next epoch.
         inflationManager.mintInflationaryRewardsToPool();
 
-        uint256 currentEpochNumber = getCurrentEpochNumber();
-        uint256 previousEpochNumber = currentEpochNumber.sub(1);
-        uint256 twoPreviousEpochNumber = currentEpochNumber.sub(2);
-        uint256 totalStakesInPreviousEpoch = totalStakesAtEpoch[previousEpochNumber];
-        uint256 stakeInPreviousEpoch = stakesAtEpoch[userAddress][previousEpochNumber];
+        uint256 currentEpochIndex = getCurrentEpochIndex();
+        uint256 previousEpochIndex = currentEpochIndex.sub(1);
+        uint256 twoPreviousEpochIndex = currentEpochIndex.sub(2);
+        uint256 totalStakesInPreviousEpoch = totalStakesAtEpoch[previousEpochIndex];
+        uint256 stakeInPreviousEpoch = stakesAtEpoch[userAddress][previousEpochIndex];
 
         // Carry over vested rewards from two epochs ago
-        if (unpaidVestedRewardsAtEpoch[twoPreviousEpochNumber] != 0)
+        if (unpaidVestedRewardsAtEpoch[twoPreviousEpochIndex] != 0)
         {
-            vestedRewardsAtEpoch[previousEpochNumber] = vestedRewardsAtEpoch[previousEpochNumber]
-                .add(unpaidVestedRewardsAtEpoch[twoPreviousEpochNumber]);
-            unpaidVestedRewardsAtEpoch[twoPreviousEpochNumber] = 0;
+            vestedRewardsAtEpoch[previousEpochIndex] = vestedRewardsAtEpoch[previousEpochIndex]
+                .add(unpaidVestedRewardsAtEpoch[twoPreviousEpochIndex]);
+            unpaidVestedRewardsAtEpoch[twoPreviousEpochIndex] = 0;
         }
 
-        uint256 vestedRewards = vestedRewardsAtEpoch[previousEpochNumber]
+        // Collect vested rewards
+        uint256 vestedRewards = vestedRewardsAtEpoch[previousEpochIndex]
             .mul(totalStakesInPreviousEpoch)
             .div(stakeInPreviousEpoch);
         balances[userAddress] = balances[userAddress].add(vestedRewards);
-        createVesting(userAddress, vestedRewards, currentEpochNumber.add(rewardVestingPeriod));
-        unpaidVestedRewardsAtEpoch[previousEpochNumber] = unpaidVestedRewardsAtEpoch[previousEpochNumber]
+        createVesting(userAddress, vestedRewards, currentEpochIndex.add(rewardVestingPeriod));
+        unpaidVestedRewardsAtEpoch[previousEpochIndex] = unpaidVestedRewardsAtEpoch[previousEpochIndex]
             .sub(vestedRewards);
 
         // Carry over instant rewards from two epochs ago
-        if (unpaidInstantRewardsAtEpoch[twoPreviousEpochNumber] != 0)
+        if (unpaidInstantRewardsAtEpoch[twoPreviousEpochIndex] != 0)
         {
-            instantRewardsAtEpoch[previousEpochNumber] = instantRewardsAtEpoch[previousEpochNumber]
-                .add(unpaidInstantRewardsAtEpoch[twoPreviousEpochNumber]);
-            unpaidInstantRewardsAtEpoch[twoPreviousEpochNumber] = 0;
+            instantRewardsAtEpoch[previousEpochIndex] = instantRewardsAtEpoch[previousEpochIndex]
+                .add(unpaidInstantRewardsAtEpoch[twoPreviousEpochIndex]);
+            unpaidInstantRewardsAtEpoch[twoPreviousEpochIndex] = 0;
         }
 
-        uint256 instantRewards = instantRewardsAtEpoch[previousEpochNumber]
+        // Collect instant rewards
+        uint256 instantRewards = instantRewardsAtEpoch[previousEpochIndex]
             .mul(totalStakesInPreviousEpoch)
             .div(stakeInPreviousEpoch);
         balances[userAddress] = balances[userAddress].add(instantRewards);
-        unpaidInstantRewardsAtEpoch[previousEpochNumber] = unpaidInstantRewardsAtEpoch[previousEpochNumber]
+        unpaidInstantRewardsAtEpoch[previousEpochIndex] = unpaidInstantRewardsAtEpoch[previousEpochIndex]
             .sub(instantRewards);
     }
 }

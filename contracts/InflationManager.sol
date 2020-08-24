@@ -1,5 +1,5 @@
-//SPDX-License-Identifier: Unlicense
-pragma solidity >=0.6.8;
+//SPDX-License-Identifier: MIT
+pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./interfaces/IApi3Token.sol";
@@ -8,35 +8,68 @@ import "./interfaces/IEpochUtils.sol";
 import "./interfaces/IInflationManager.sol";
 
 
+/// @title Contract where the inflation schedule is defined and API3 tokens are
+/// minted
+/// @notice After deploying this contract, the API3 token owner (i.e., the API3
+/// DAO) should call updateMinterStatus() at Api3Token to authorize it as a
+/// minter. To update the inflation schedule, another InflationManager should
+/// be deployed, the previous InflationManager's minting authorization should
+/// be revoked and given to the new one.
+/// @dev The decaying inflation rate is independent from the token total
+/// supply, while the terminal inflation rate is not. This means that if
+/// another contract also mints API3 tokens during the decaying period, the
+/// number of minted tokens will not increase to keep the inflation rate
+/// constant.
 contract InflationManager is IInflationManager {
     using SafeMath for uint256;
 
-    ///  Initial annual inflation rate: 0.75
-    ///  Initial weekly inflation rate: 0.75 / 52
-    ///  Initial token supply (in Wei): 1e8 * 1e18 = 1e26
-    ///  Initial weekly inflationary supply: 1e26 * 0.75 / 52 = 1442307692307692307692307
+    /// Number of tokens that will be minted on week #1
+    /// Initial annual inflation rate: 0.75
+    /// Initial weekly inflation rate: 0.75 / 52
+    /// Initial token supply (in Wei): 1e8 * 1e18 = 1e26
+    /// Initial weekly inflationary supply: 1e26 * 0.75 / 52 = 1442307692307692307692307
     uint256 public constant INITIAL_WEEKLY_SUPPLY = 1442307692307692307692307;
 
+    /// Coefficient that will be multiplied with the number of tokens that will
+    /// be minted on one week to find the number of tokens that will be
+    /// minted the week after (times 1e18)
     /// Weekly supply decay rate: 0.00965
     /// Weekly supply update coefficient: 1e18 * (1 - 0.00965) = 990350000000000000
     uint256 public constant WEEKLY_SUPPLY_UPDATE_COEFF = 990350000000000000;
 
+    /// Coefficient that will be multiplied with the total token supply to find
+    /// the number of tokens that will be minted on a week after the
+    /// terminal epoch (times 1e18)
     /// Terminal annual inflation rate: 0.025
     /// Terminal weekly inflation rate: 0.025 / 52
     /// Terminal weekly inflationary supply rate: 1e18 * 0.025 / 52 = 480769230769230
     uint256 public constant TERMINAL_WEEKLY_SUPPLY_RATE = 480769230769230;
 
-    // 5 years * 52 weeks/year = 260
+    /// Time period during which the number of minted tokens will decay
+    /// exponentially
+    /// 5 years * 52 weeks/year = 260
     uint256 public constant DECAY_PERIOD = 260;
 
+    /// API3 token contract
     IApi3Token public immutable api3Token;
-    ITransferUtils public immutable api3Pool;
-    IEpochUtils public immutable epochUtils;
-    mapping(uint256 => bool) private mintedInflationaryRewardsForEpoch;
-    uint256[] public weeklySupplyCoeffs;
+    /// API3 pool transfer utilities to add vested rewards
+    ITransferUtils public immutable api3PoolTransfer;
+    /// API3 pool epoch utilities to get the current epoch
+    IEpochUtils public immutable api3PoolEpoch;
+
+    /// @dev Mapping of epochs to if inflationary rewards are minted
+    mapping(uint256 => bool) private mintedInflationaryRewardsAtEpoch;
+    /// @dev Array that keeps the number of tokens that will be minted each
+    /// week
+    uint256[] internal weeklySupplies;
+    /// Epoch when the inflationary rewards will start
     uint256 public immutable startEpoch;
+    /// Epoch when the inflation rate is set to its constant value
     uint256 public immutable terminalEpoch;
 
+    /// @param api3TokenAddress Address of the API3 token contract
+    /// @param api3PoolAddress Address of the API3 pool contract
+    /// @param _startEpoch Epoch when the inflationary rewards will start
     constructor(
         address api3TokenAddress,
         address api3PoolAddress,
@@ -45,42 +78,49 @@ contract InflationManager is IInflationManager {
         public
         {
             api3Token = IApi3Token(api3TokenAddress);
-            api3Pool = ITransferUtils(api3PoolAddress);
-            epochUtils = IEpochUtils(api3PoolAddress);
+            api3PoolTransfer = ITransferUtils(api3PoolAddress);
+            api3PoolEpoch = IEpochUtils(api3PoolAddress);
+
             startEpoch = _startEpoch;
             terminalEpoch = _startEpoch.add(DECAY_PERIOD);
-            weeklySupplyCoeffs = new uint256[](DECAY_PERIOD);
-            uint supplyCoeff = 1e18;
-            weeklySupplyCoeffs[0] = supplyCoeff;
-            // Costs ~6.2e6 gas for a 5 year decay period
+
+            // Pre-calculate the weekly supplies
+            weeklySupplies = new uint256[](DECAY_PERIOD);
+            uint weeklySupply = INITIAL_WEEKLY_SUPPLY;
+            weeklySupplies[0] = weeklySupply;
             for (uint256 indWeek = 1; indWeek < DECAY_PERIOD; indWeek++)
             {
-                supplyCoeff = supplyCoeff
+                weeklySupply = weeklySupply
                     .mul(WEEKLY_SUPPLY_UPDATE_COEFF)
                     .div(1e18);
-                weeklySupplyCoeffs[indWeek] = supplyCoeff;
+                weeklySupplies[indWeek] = weeklySupply;
             }
         }
-    
+
+    /// @notice Mints inflationary rewards to the API3 pool
+    /// @dev Gets called automatically when a user calls collect() at the pool
+    /// contract. It can also be called manually. Note that for week #1, users
+    /// will not be calling collect(), so this will have to be called manually.
     function mintInflationaryRewardsToPool()
         external
         override
       {
-          uint256 currentEpochNumber = epochUtils.getCurrentEpochNumber();
-          if (!mintedInflationaryRewardsForEpoch[currentEpochNumber])
+          uint256 currentEpochIndex = api3PoolEpoch.getCurrentEpochIndex();
+          if (!mintedInflationaryRewardsAtEpoch[currentEpochIndex])
           {
-              uint256 amount = getDeltaTokenSupply(currentEpochNumber);
+              uint256 amount = getDeltaTokenSupply(currentEpochIndex);
               api3Token.mint(address(this), amount);
-              api3Token.approve(address(api3Pool), amount);
-              api3Pool.addVestedRewards(address(this), amount);
-              mintedInflationaryRewardsForEpoch[currentEpochNumber] = true;
+              api3Token.approve(address(api3PoolTransfer), amount);
+              api3PoolTransfer.addVestedRewards(address(this), amount);
+              mintedInflationaryRewardsAtEpoch[currentEpochIndex] = true;
           }
       }
 
+    /// @notice Gets the number of tokens that needs to be minted for an epoch
+    /// @param indEpoch Epoch index (not the week index)
     function getDeltaTokenSupply(uint256 indEpoch)
-        public
+        private
         view
-        override
         returns(uint256 deltaTokenSupply)
     {
         if (indEpoch < startEpoch)
@@ -89,10 +129,7 @@ contract InflationManager is IInflationManager {
         }
         else if (indEpoch <= terminalEpoch)
         {
-            uint256 indWeek = indEpoch.sub(startEpoch);
-            return weeklySupplyCoeffs[indWeek]
-                .mul(INITIAL_WEEKLY_SUPPLY)
-                .div(1e18);
+            return weeklySupplies[indEpoch.sub(startEpoch)];
         }
         else
         {

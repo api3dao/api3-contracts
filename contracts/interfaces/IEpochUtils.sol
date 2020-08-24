@@ -1,15 +1,15 @@
-//SPDX-License-Identifier: Unlicense
-pragma solidity ^0.6.8;
+//SPDX-License-Identifier: MIT
+pragma solidity 0.6.12;
 
 
 interface IEpochUtils {
-    function getCurrentEpochNumber()
+    function getCurrentEpochIndex()
         external
         view
-        returns(uint256 currentEpochNumber);
+        returns(uint256 currentEpochIndex);
 
-    function getEpochNumber(uint256 timestamp)
+    function getEpochIndex(uint256 timestamp)
         external
         view
-        returns(uint256 epochNumber);
+        returns(uint256 epochIndex);
 }

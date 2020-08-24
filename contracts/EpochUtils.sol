@@ -1,41 +1,50 @@
-//SPDX-License-Identifier: Unlicense
-pragma solidity ^0.6.8;
+//SPDX-License-Identifier: MIT
+pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "./Api3Pool.sol";
 import "./interfaces/IEpochUtils.sol";
 
 
-contract EpochUtils is IEpochUtils {
+/// @title Contract where the epoch logic of the API3 pool is implemented
+contract EpochUtils is Api3Pool, IEpochUtils {
     using SafeMath for uint256;
 
-    uint256 public immutable epochPeriodInSeconds;
-    uint256 public immutable firstEpochStartTimestamp;
-
+    /// @param api3TokenAddress Address of the API3 token contract
+    /// @param epochPeriodInSeconds Length of epochs used to quantize time
+    /// @param firstEpochStartTimestamp Starting timestamp of epoch #1
     constructor(
-        uint256 _epochPeriodInSeconds,
-        uint256 _firstEpochStartTimestamp
+        address api3TokenAddress,
+        uint256 epochPeriodInSeconds,
+        uint256 firstEpochStartTimestamp
         )
+        Api3Pool(
+            api3TokenAddress,
+            epochPeriodInSeconds,
+            firstEpochStartTimestamp
+            )
         public
-        {
-            require(_epochPeriodInSeconds != 0, "Epoch period cannot be 0");
-            epochPeriodInSeconds = _epochPeriodInSeconds;
-            firstEpochStartTimestamp = _firstEpochStartTimestamp;
-        }
+        {}
 
-    function getCurrentEpochNumber()
+    /// @notice Gets the index of the current epoch
+    function getCurrentEpochIndex()
         public
         view
         override
-        returns(uint256 currentEpochNumber)
+        returns(uint256 currentEpochIndex)
     {
-        return getEpochNumber(now);
+        return getEpochIndex(now);
     }
 
-    function getEpochNumber(uint256 timestamp)
+    /// @notice Gets the index of the epoch at a timestamp
+    /// @dev The index of the first epoch is 1. This method returning 0 means
+    /// that the epochs have not started yet.
+    /// @param timestamp Timestamp
+    function getEpochIndex(uint256 timestamp)
         public
         view
         override
-        returns(uint256 epochNumber)
+        returns(uint256 epochIndex)
     {
         if (timestamp < firstEpochStartTimestamp)
         {

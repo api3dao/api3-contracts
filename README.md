@@ -73,12 +73,12 @@ The DAO reads from a `getVotingPower(userAddress, timestamp)` method to get the 
 
 1. Call `requestToUnpool()` to request to unpool funds (no need to specify the amount beforehand) `unpoolWaitingPeriod` epochs (default=2, governable) later.
 This limit is to prevent users from front-running insurance claims (i.e., withdraw as soon as there is a possibility for a claim to be made).
-Note that this request can only be done every `unpoolRequestCooldown` epochs (default=4, governable) to prevent users from having an active unpool request at all times (which would allow them to withdraw anytime and defeat the purpose).
+Note that this request can only be done every `unpoolRequestCooldown` epochs (default=4, governable) to prevent users from having an active unpooling request at all times (which would allow them to withdraw anytime and defeat the purpose).
 
 `unpoolWaitingPeriod` and `unpoolRequestCooldown` will be set to `0` until insurance is implemented for convenience.
 This will allow users with non-vested funds to unpool and withdraw at will.
 
-2. Exactly `unpoolWaitingPeriod` epochs after the unpool request, call `unpool()` with the amount you want to unpool.
+2. Exactly `unpoolWaitingPeriod` epochs after the unpooling request, call `unpool()` with the amount you want to unpool.
 
 Note that a portion of the funds will stay locked in an IOU for each active claim process at the moment `unpool()` is called.
 See below for more details.

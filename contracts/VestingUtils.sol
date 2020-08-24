@@ -1,10 +1,15 @@
-//SPDX-License-Identifier: Unlicense
-pragma solidity ^0.6.8;
+//SPDX-License-Identifier: MIT
+pragma solidity 0.6.12;
 
 import "./PoolUtils.sol";
+import "./interfaces/IVestingUtils.sol";
 
 
-contract VestingUtils is PoolUtils {
+/// @title Contract where the vesting logic of the API3 pool is implemented
+contract VestingUtils is PoolUtils, IVestingUtils {
+    /// @param api3TokenAddress Address of the API3 token contract
+    /// @param epochPeriodInSeconds Length of epochs used to quantize time
+    /// @param firstEpochStartTimestamp Starting timestamp of epoch #1
     constructor(
         address api3TokenAddress,
         uint256 epochPeriodInSeconds,
@@ -18,6 +23,10 @@ contract VestingUtils is PoolUtils {
         public
         {}
 
+    /// @notice Locks amount number of tokens of the user in a vesting
+    /// @param userAddress User address
+    /// @param amount Number of tokens to be vested
+    /// @param vestingEpoch Index of the epoch when the funds will be vested
     function createVesting(
         address userAddress,
         uint256 amount,
@@ -38,11 +47,14 @@ contract VestingUtils is PoolUtils {
             });
     }
 
+    /// @notice Resolves a vesting
+    /// @param vestingId Vesting ID
     function vest(bytes32 vestingId)
         external
+        override
     {
         Vesting memory vesting = vestings[vestingId];
-        require(getCurrentEpochNumber() >= vesting.epoch, "Cannot vest before vesting.epoch");
+        require(getCurrentEpochIndex() >= vesting.epoch, "Cannot vest before vesting.epoch");
         unvestedFunds[vesting.userAddress] = unvestedFunds[vesting.userAddress].sub(vesting.amount);
         delete vestings[vestingId];
     }

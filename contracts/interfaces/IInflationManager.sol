@@ -1,13 +1,8 @@
-//SPDX-License-Identifier: Unlicense
-pragma solidity ^0.6.8;
+//SPDX-License-Identifier: MIT
+pragma solidity 0.6.12;
 
 
 interface IInflationManager {
     function mintInflationaryRewardsToPool()
         external;
-
-    function getDeltaTokenSupply(uint256 indEpoch)
-        external
-        view
-        returns(uint256 deltaTokenSupply);
 }

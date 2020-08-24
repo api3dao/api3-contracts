@@ -1,22 +1,42 @@
-//SPDX-License-Identifier: Unlicense
-pragma solidity ^0.6.8;
+//SPDX-License-Identifier: MIT
+pragma solidity 0.6.12;
 
-import "./EpochUtils.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IApi3Token.sol";
 import "./interfaces/IInflationManager.sol";
+import "./interfaces/IApi3Pool.sol";
 
 
-contract Api3Pool is Ownable, EpochUtils {
+/// @title Base API3 pool contract that keeps all the state variables
+/// @notice The pool owner (i.e., the API3 DAO) uses this contract to update
+/// parameters such as the address of the inflation manager or if the users
+/// need to give a lead time before unpooling
+/// @dev Different functions of the pool are grouped under separate
+/// contracts that form a chain of inheritance. The chain goes like Api3Pool->
+/// EpochUtils->GetterUtils->ClaimUtils->IouUtils->PoolUtils->VestingUtils->
+/// StakeUtils->TransferUtils. Only methods are separated and not the state
+/// variables because there are some circular dependencies between these
+/// functions.
+contract Api3Pool is Ownable, IApi3Pool {
+    // An insurance claim that is created by the claimsManager has the status
+    // Pending. If/when claimsManager accepts the claim and pays it out, its
+    // status gets updated as Accepted. If/when claimsManager denies the claim,
+    // its status gets updated as Denied.
     enum ClaimStatus { Pending, Accepted, Denied }
 
-    struct Vesting
+    // An insurance claim. claimsManager transfers amount-many API3 tokens to
+    // beneficiary if it gets accepted.
+    struct Claim
     {
-        address userAddress;
+        address beneficiary;
         uint256 amount;
-        uint256 epoch;
+        ClaimStatus status;
     }
 
+    // An IOU given to a user that can be redeemed if the claim with claimId
+    // resolves to redemptionCondition. Note that the amount that the IOU will
+    // pay out is denoted in pool shares, rather than an absolute amount of
+    // tokens.
     struct Iou
     {
         address userAddress;
@@ -25,152 +45,197 @@ contract Api3Pool is Ownable, EpochUtils {
         ClaimStatus redemptionCondition;
     }
 
-    struct Claim
+    // A timelock that prevents the user from withdrawing amount-many API3
+    // tokens from the pool contract before epoch
+    struct Vesting
     {
-        address beneficiary;
+        address userAddress;
         uint256 amount;
-        ClaimStatus status;
+        uint256 epoch;
     }
 
+    /// API3 token contract 
     IApi3Token public immutable api3Token;
+    /// A contract that mints API3 tokens every epoch and adds them to the
+    /// vested rewards to be distributed in the next epoch
     IInflationManager public inflationManager;
+    /// A contract that can create and resolve insurance claims
     address public claimsManager;
 
-    // User balances, includes vested and unvested funds (not IOUs)
+    // ~~~~~~Epoch~~~~~~
+    /// Period that is used to quantize time for the pool functionality. The
+    /// value will be 1 week=7*24*60=10080 and immutable.
+    uint256 public immutable epochPeriodInSeconds;
+    /// The timestamp when the first epoch is supposed to start. We have the
+    /// deployer provide this value to be able to have a round number (e.g.,
+    /// exactly on Thursday at 15:00 UTC), which is desirable for staking UX.
+    uint256 public immutable firstEpochStartTimestamp;
+    // ~~~~~~Epoch~~~~~~
+
+    // ~~~~~~Transfer~~~~~~
+    /// @dev Mapping of user addresses to balances. Includes vested and
+    /// unvested funds, but not IOUs.
     mapping(address => uint256) internal balances;
-    // User unvested funds
-    mapping(address => uint256) internal unvestedFunds;
+    // ~~~~~~Transfer~~~~~~
 
     // ~~~~~~Pooling~~~~~~
-    // Total funds in the pool
-    uint256 internal totalPoolFunds = 1;
-    // Total number of pool shares
-    uint256 internal totalPoolShares = 1;
-    // User pool shares
+    /// Total funds (i.e., API3 tokens) in the pool. Note that both this and
+    /// totalPoolShares are initialized at 1. This means that initially, 1 API3
+    /// token buys 1 pool share.
+    uint256 public totalPoolFunds = 1;
+    /// Total number of pool shares
+    uint256 public totalPoolShares = 1;
+    /// @dev Mapping of user addresses to pool shares
     mapping(address => uint256) internal poolShares;
-    // Epochs when users made their last unpool requests
+    /// @dev Mapping of user addresses to when they have made their last
+    /// unpooling requests
     mapping(address => uint256) internal unpoolRequestEpochs;
-    uint256 internal unpoolRequestCooldown; // in epochs (set to 0 for now)
-    uint256 internal unpoolWaitingPeriod; // in epochs (set to 0 for now)
+    /// The minimum number of epochs the users have to wait to make a new
+    /// unpooling request. It will be left at 0 for user convenience until the
+    /// insurance functionality goes online.
+    uint256 public unpoolRequestCooldown;
+    /// The exact number of epochs the users have to wait to unpool after their
+    /// last unpooling request. It will be left at 0 for user convenience until
+    /// the insurance functionality goes online.
+    uint256 public unpoolWaitingPeriod;
     // ~~~~~~Pooling~~~~~~
 
     // ~~~~~~Staking~~~~~~
-    // Total staked pool shares at each epoch
+    /// @dev Mapping of epochs to total staked pool shares
     mapping(uint256 => uint256) internal totalStakesAtEpoch;
-    // User staked pool shares at each epoch
+    /// @dev Mapping of user addresses to mappings of epochs to staked pool
+    /// shares of individual users
     mapping(address => mapping(uint256 => uint256)) internal stakesAtEpoch;
-    // Total rewards to be vested at each epoch (e.g., inflationary)
+    /// @dev Mapping of epochs to total rewards that will be vested (e.g.,
+    /// inflationary)
     mapping(uint256 => uint256) internal vestedRewardsAtEpoch;
+    /// @dev Mapping of epochs to total unpaid rewards that will be vested
+    /// (e.g., inflationary). Used to carry over unpaid rewards from previous
+    /// epochs.
     mapping(uint256 => uint256) internal unpaidVestedRewardsAtEpoch;
-    // Total rewards received instantly at each epoch (e.g., revenue distribution)
+    /// @dev Mapping of epochs to total rewards that will be paid out instantly
+    /// (e.g., revenue distribution)
     mapping(uint256 => uint256) internal instantRewardsAtEpoch;
+    /// @dev Mapping of epochs to total unpaid rewards that will be paid out
+    /// instantly (e.g., revenue distribution). Used to carry over unpaid
+    /// rewards from previous epochs.
     mapping(uint256 => uint256) internal unpaidInstantRewardsAtEpoch;
-    uint256 internal rewardVestingPeriod = 52; // in epochs
+    /// Number of epochs the users have to wait to have rewards vested. The
+    /// initial value is 1 year (52 epochs), yet this parameter is governable
+    /// by the API3 DAO.
+    uint256 public rewardVestingPeriod = 52;
     // ~~~~~~Staking~~~~~~
+
+    // ~~~~~~Vesting~~~~~~
+    /// @dev Number of vestings (all, not only active)
+    uint256 internal noVestings;
+    /// @dev Mapping of vesting IDs to vesting records
+    mapping(bytes32 => Vesting) internal vestings;
+    /// @dev Mapping of user addresses to their unvested funds. A user cannot
+    /// withdraw an amount that will result in their balance go below their
+    /// unvested funds.
+    mapping(address => uint256) internal unvestedFunds;
+    // ~~~~~~Vesting~~~~~~
 
     // ~~~~~~Claims~~~~~~
+    /// @dev Number of claims (all, not only active)
     uint256 internal noClaims;
+    /// @dev Mapping of claim IDs to claim records
     mapping(bytes32 => Claim) internal claims;
+    /// @dev An array containing the IDs of active claims. Used to create IOUs
+    /// while pooling/unpooling.
     bytes32[] internal activeClaims;
-    uint256 internal totalActiveClaimsAmount;
+    /// Total amount claimed by the active claims. Used to determine if the
+    /// pool has enough funds for a new claim.
+    uint256 public totalActiveClaimsAmount;
     // ~~~~~~Claims~~~~~~
 
     // ~~~~~~IOUs~~~~~~
+    /// @dev Number of IOUs (all, not only active)
     uint256 internal noIous;
+    /// @dev Mapping of IOU IDs to IOU records
     mapping(bytes32 => Iou) internal ious;
     // ~~~~~~IOUs~~~~~~
 
-    // ~~~~~~Vesting~~~~~~
-    uint256 internal noVestings;
-    mapping(bytes32 => Vesting) internal vestings;
-    // ~~~~~~Vesting~~~~~~
-
-    event InflationManagerUpdated(address inflationManagerAddress);
-    event RewardVestingPeriodUpdated(uint256 rewardVestingPeriod);
-    event UnpoolRequestCooldownUpdated(uint256 unpoolRequestCooldown);
-    event UnpoolWaitingPeriodUpdated(uint256 unpoolWaitingPeriod);
-
+    /// @param api3TokenAddress Address of the API3 token contract
+    /// @param _epochPeriodInSeconds Length of epochs used to quantize time
+    /// @param _firstEpochStartTimestamp Starting timestamp of epoch #1
     constructor(
         address api3TokenAddress,
-        uint256 epochPeriodInSeconds,
-        uint256 firstEpochStartTimestamp
+        uint256 _epochPeriodInSeconds,
+        uint256 _firstEpochStartTimestamp
         )
-        EpochUtils(
-            epochPeriodInSeconds,
-            firstEpochStartTimestamp
-            )
         public
-        {
-            api3Token = IApi3Token(api3TokenAddress);
-        }
+    {
+        require(_epochPeriodInSeconds != 0, "Epoch period cannot be 0");
+        epochPeriodInSeconds = _epochPeriodInSeconds;
+        firstEpochStartTimestamp = _firstEpochStartTimestamp;
+        api3Token = IApi3Token(api3TokenAddress);
+    }
 
-
+    /// @notice Updates the inflation manager contract to change the schedule
+    /// of inflationary rewards
+    /// @dev Can only be called by the owner (i.e., the API3 DAO)
+    /// @param inflationManagerAddress Address of the updated inflation manager
+    /// contract
     function updateInflationManager(address inflationManagerAddress)
         external
+        override
         onlyOwner
     {
         inflationManager = IInflationManager(inflationManagerAddress);
         emit InflationManagerUpdated(inflationManagerAddress);
     }
 
+    /// @notice Updates the claim manager address that can create, accept and
+    /// deny insurance claims
+    /// @dev Can only be called by the owner (i.e., the API3 DAO)
+    /// @param claimsManagerAddress Address of the updated claims manager
+    function updateClaimsManager(address claimsManagerAddress)
+        external
+        override
+        onlyOwner
+    {
+        claimsManager = claimsManagerAddress;
+        emit ClaimsManagerUpdated(claimsManager);
+    }
+
+    /// @notice Updates when the vested rewards (e.g., inflationary) are
+    /// received
+    /// @dev Can only be called by the owner (i.e., the API3 DAO)
+    /// @param _rewardVestingPeriod Updated vesting period in epochs
     function updateRewardVestingPeriod(uint256 _rewardVestingPeriod)
         external
+        override
         onlyOwner
     {
         rewardVestingPeriod = _rewardVestingPeriod;
         emit RewardVestingPeriodUpdated(rewardVestingPeriod);
     }
 
+    /// @notice Updates how frequently unpooling requests can be made
+    /// @dev Can only be called by the owner (i.e., the API3 DAO)
+    /// @param _unpoolRequestCooldown Updated unpooling request cooldown in
+    /// epochs
     function updateUnpoolRequestCooldown(uint256 _unpoolRequestCooldown)
         external
+        override
         onlyOwner
     {
         unpoolRequestCooldown = _unpoolRequestCooldown;
         emit UnpoolRequestCooldownUpdated(unpoolRequestCooldown);
     }
 
+    /// @notice Updates how long the user has to wait after making an unpool
+    /// request to be able to unpool
+    /// @dev Can only be called by the owner (i.e., the API3 DAO)
+    /// @param _unpoolWaitingPeriod Updated unpool waiting period in epochs
     function updateUnpoolWaitingPeriod(uint256 _unpoolWaitingPeriod)
         external
+        override
         onlyOwner
     {
         unpoolWaitingPeriod = _unpoolWaitingPeriod;
         emit UnpoolWaitingPeriodUpdated(unpoolWaitingPeriod);
-    }
-
-    function getPooledFundsOfUser(address userAddress)
-        internal
-        view
-        returns(uint256 pooled)
-    {
-        pooled = totalPoolShares.mul(totalPoolFunds).div(poolShares[userAddress]);
-    }
-
-    function convertFundsToShares(uint256 amount)
-        internal
-        view
-        returns(uint256 amountInShares)
-    {
-        amountInShares = amount.mul(totalPoolShares).div(totalPoolFunds);
-    }
-
-    function convertSharesToFunds(uint256 amountInShares)
-        internal
-        view
-        returns(uint256 amount)
-    {
-        amount = amountInShares.mul(totalPoolFunds).div(totalPoolShares);
-    }
-
-    function getVotingPower(
-        address userAddress,
-        uint256 timestamp
-        )
-        external
-        view
-        returns(uint256 votingPower)
-    {
-        uint256 epochNumber = getEpochNumber(timestamp);
-        votingPower = stakesAtEpoch[userAddress][epochNumber]
-            .mul(1e18).div(totalStakesAtEpoch[epochNumber]);
     }
 }
