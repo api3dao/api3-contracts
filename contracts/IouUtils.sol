@@ -77,6 +77,7 @@ contract IouUtils is ClaimUtils, IIouUtils {
             // claim if necessary. If the claim is denied and the IOU is being
             // redeemed, these ghost shares should be removed.
             totalPoolShares = totalPoolShares.sub(iou.amountInShares);
+            totalGhostShares = totalGhostShares.sub(iou.amountInShares);
             totalPoolFunds = totalPoolFunds.sub(amountInTokens);
         }
         balances[iou.userAddress] = balances[iou.userAddress].add(amountInTokens);

@@ -130,6 +130,7 @@ contract PoolUtils is IouUtils, IPoolUtils {
         // Leave the total IOU amount in the pool as ghost shares
         uint256 totalIouAmountInShares = convertFundsToShares(totalIouAmount);
         totalPoolShares = totalPoolShares.add(totalIouAmountInShares);
+        totalGhostShares = totalGhostShares.add(totalIouAmountInShares);
         totalPoolFunds = totalPoolFunds.add(totalIouAmount);
         
         // Check if the user has staked in this epoch before unpooling and

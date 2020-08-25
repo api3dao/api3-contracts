@@ -149,6 +149,7 @@ contract Api3Pool is Ownable, IApi3Pool {
     uint256 internal noIous;
     /// @dev Mapping of IOU IDs to IOU records
     mapping(bytes32 => Iou) internal ious;
+    uint256 public totalGhostShares = totalPoolShares;
     // ~~~~~~IOUs~~~~~~
 
     /// @param api3TokenAddress Address of the API3 token contract
