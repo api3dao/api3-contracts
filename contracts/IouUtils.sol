@@ -64,24 +64,32 @@ contract IouUtils is ClaimUtils, IIouUtils {
         override
     {
         Iou memory iou = ious[iouId];
-        uint256 amountInTokens = convertSharesToFunds(iou.amountInShares);
+        ClaimStatus claimStatus = claims[iou.claimId].status;
         require(
-            claims[iou.claimId].status == iou.redemptionCondition,
-            "IOU redemption condition is not met"
+            claimStatus == ClaimStatus.Pending,
+            "IOU not redeemable yet"
             );
-        if (iou.redemptionCondition == ClaimStatus.Denied)
+        if (claimStatus == iou.redemptionCondition)
         {
-            // While unpooling with an active claim, the user is given an IOU
-            // for the amount they would pay out to the claim, and this amount
-            // is left in the pool as "ghost shares" to pay out the active
-            // claim if necessary. If the claim is denied and the IOU is being
-            // redeemed, these ghost shares should be removed.
-            totalPoolShares = totalPoolShares.sub(iou.amountInShares);
-            totalGhostShares = totalGhostShares.sub(iou.amountInShares);
-            totalPoolFunds = totalPoolFunds.sub(amountInTokens);
+            uint256 amountInTokens = convertSharesToFunds(iou.amountInShares);
+            if (iou.redemptionCondition == ClaimStatus.Denied)
+            {
+                // While unpooling with an active claim, the user is given an
+                // IOU for the amount they would pay out to the claim, and this
+                // amount is left in the pool as "ghost shares" to pay out the
+                // active claim if necessary. If the claim is denied and the
+                // IOU is being redeemed, these ghost shares should be removed.
+                totalPoolShares = totalPoolShares.sub(iou.amountInShares);
+                totalGhostShares = totalGhostShares.sub(iou.amountInShares);
+                totalPoolFunds = totalPoolFunds.sub(amountInTokens);
+            }
+            balances[iou.userAddress] = balances[iou.userAddress].add(amountInTokens);
+            emit IouRedeemed(iouId, amountInTokens);
         }
-        balances[iou.userAddress] = balances[iou.userAddress].add(amountInTokens);
+        else
+        {
+            emit IouDeleted(iouId);
+        }
         delete ious[iouId];
-        emit IouRedeemed(iouId);
     }
 }

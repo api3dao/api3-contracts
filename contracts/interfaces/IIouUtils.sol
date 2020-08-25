@@ -13,7 +13,9 @@ interface IIouUtils {
         IApi3Pool.ClaimStatus redemptionCondition
         );
 
-    event IouRedeemed(bytes32 indexed iouId);
+    event IouRedeemed(bytes32 indexed iouId, uint256 amount);
+
+    event IouDeleted(bytes32 indexed iouId);
 
     function redeem(bytes32 iouId)
         external;
