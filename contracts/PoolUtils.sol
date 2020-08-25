@@ -55,7 +55,7 @@ contract PoolUtils is IouUtils, IPoolUtils {
             uint256 iouAmountInShares = sharesRequiredToNotSufferFromPayout.sub(share);
             createIou(userAddress, iouAmountInShares, claimId, ClaimStatus.Accepted);
         }
-        emit Pooled(userAddress, amount);
+        emit Pooled(userAddress, amount, share);
     }
 
     /// @notice Creates a request to unpool, which must be done
@@ -78,12 +78,12 @@ contract PoolUtils is IouUtils, IPoolUtils {
         emit RequestedToUnpool(userAddress);
     }
 
-    /// @notice Has the user unpool amount number of tokens worth of shares
+    /// @notice Has the user unpool sharesToUnpool number of shares
     /// @dev This doesn't take unpoolWaitingPeriod changing after the unpool
     /// request into account.
     /// The user can unpool multiple times with a single unpooling request.
-    /// @param amount Number of tokens that will be unpooled
-    function unpool(uint256 amount)
+    /// @param shareToUnpool Number of shares that will be unpooled
+    function unpool(uint256 shareToUnpool)
         external
         override
     {
@@ -93,15 +93,16 @@ contract PoolUtils is IouUtils, IPoolUtils {
             currentEpochIndex == unpoolRequestEpochs[userAddress].add(unpoolWaitingPeriod),
             "Have to unpool unpoolWaitingPeriod epochs after the request"
             );
+        uint256 share = shares[userAddress];
         require(
-            amount <= getPooled(userAddress),
-            "Not enough unpoolable funds"
+            shareToUnpool <= share,
+            "Not enough unpoolable shares"
         );
 
         // Unlike pool(), we create the IOUs before altering the pool state.
         // This is because these IOUs will be redeemable if the claim is not
         // paid out.
-        uint256 share = convertToShares(amount);
+
         // We do not want to deduct the entire unpooled amount from the pool
         // because we still need them to potentially pay out the current active
         // claims. To this end, the amount that is secured by IOUs will be left
@@ -119,9 +120,10 @@ contract PoolUtils is IouUtils, IPoolUtils {
         }
 
         // Update the pool status
-        shares[userAddress] = shares[userAddress].sub(share);
-        totalShares = totalShares.sub(share);
-        totalPooled = totalPooled.sub(amount);
+        uint256 amountToUnpool = convertFromShares(shareToUnpool);
+        shares[userAddress] = shares[userAddress].sub(shareToUnpool);
+        totalShares = totalShares.sub(shareToUnpool);
+        totalPooled = totalPooled.sub(amountToUnpool);
         
         // Deduct the IOUs from the user's balance
         balances[userAddress] = balances[userAddress].sub(totalIouAmount);
@@ -143,6 +145,6 @@ contract PoolUtils is IouUtils, IPoolUtils {
                 .sub(staked.sub(updatedShare));
             stakedAtEpoch[userAddress][nextEpochIndex] = updatedShare;
         }
-        emit Unpooled(userAddress, amount);
+        emit Unpooled(userAddress, amountToUnpool, shareToUnpool);
     }
 }
