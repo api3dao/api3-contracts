@@ -23,17 +23,17 @@ contract StakeUtils is VestingUtils, IStakeUtils {
         public
         {}
 
-    /// @notice Has the user stake all of their pool shares
+    /// @notice Has the user stake all of their shares
     /// @param userAddress User address
     function stake(address userAddress)
         external
         override
     {
         uint256 nextEpochIndex = getCurrentEpochIndex().add(1);
-        uint256 sharesStaked = stakesAtEpoch[userAddress][nextEpochIndex];
-        uint256 sharesToStake = poolShares[userAddress];
-        stakesAtEpoch[userAddress][nextEpochIndex] = sharesToStake;
-        totalStakesAtEpoch[nextEpochIndex] = totalStakesAtEpoch[nextEpochIndex]
+        uint256 sharesStaked = stakedAtEpoch[userAddress][nextEpochIndex];
+        uint256 sharesToStake = shares[userAddress];
+        stakedAtEpoch[userAddress][nextEpochIndex] = sharesToStake;
+        totalStakedAtEpoch[nextEpochIndex] = totalStakedAtEpoch[nextEpochIndex]
             .add(sharesToStake.sub(sharesStaked));
         emit Staked(userAddress, sharesToStake);
     }
@@ -53,8 +53,8 @@ contract StakeUtils is VestingUtils, IStakeUtils {
         uint256 currentEpochIndex = getCurrentEpochIndex();
         uint256 previousEpochIndex = currentEpochIndex.sub(1);
         uint256 twoPreviousEpochIndex = currentEpochIndex.sub(2);
-        uint256 totalStakesInPreviousEpoch = totalStakesAtEpoch[previousEpochIndex];
-        uint256 stakeInPreviousEpoch = stakesAtEpoch[userAddress][previousEpochIndex];
+        uint256 totalStakedAtPreviousEpoch = totalStakedAtEpoch[previousEpochIndex];
+        uint256 stakedAtPreviousEpoch = stakedAtEpoch[userAddress][previousEpochIndex];
 
         // Carry over vested rewards from two epochs ago
         if (unpaidVestedRewardsAtEpoch[twoPreviousEpochIndex] != 0)
@@ -66,8 +66,8 @@ contract StakeUtils is VestingUtils, IStakeUtils {
 
         // Collect vested rewards
         uint256 vestedRewards = vestedRewardsAtEpoch[previousEpochIndex]
-            .mul(totalStakesInPreviousEpoch)
-            .div(stakeInPreviousEpoch);
+            .mul(totalStakedAtPreviousEpoch)
+            .div(stakedAtPreviousEpoch);
         balances[userAddress] = balances[userAddress].add(vestedRewards);
         createVesting(userAddress, vestedRewards, currentEpochIndex.add(rewardVestingPeriod));
         unpaidVestedRewardsAtEpoch[previousEpochIndex] = unpaidVestedRewardsAtEpoch[previousEpochIndex]
@@ -83,8 +83,8 @@ contract StakeUtils is VestingUtils, IStakeUtils {
 
         // Collect instant rewards
         uint256 instantRewards = instantRewardsAtEpoch[previousEpochIndex]
-            .mul(totalStakesInPreviousEpoch)
-            .div(stakeInPreviousEpoch);
+            .mul(totalStakedAtPreviousEpoch)
+            .div(stakedAtPreviousEpoch);
         balances[userAddress] = balances[userAddress].add(instantRewards);
         unpaidInstantRewardsAtEpoch[previousEpochIndex] = unpaidInstantRewardsAtEpoch[previousEpochIndex]
             .sub(instantRewards);

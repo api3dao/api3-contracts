@@ -26,36 +26,36 @@ contract GetterUtils is EpochUtils, IGetterUtils {
 
     /// @notice Gets the amount of funds the user has pooled
     /// @param userAddress User address
-    function getPooledFundsOfUser(address userAddress)
+    function getPooled(address userAddress)
         internal
         view
         returns(uint256 pooled)
     {
-        pooled = totalPoolShares.mul(totalPoolFunds).div(poolShares[userAddress]);
+        pooled = totalShares.mul(totalPooled).div(shares[userAddress]);
     }
 
-    /// @notice Calculates how many shares an amount of tokens correspond to
+    /// @notice Calculates how many shares an amount of tokens corresponds to
     /// @param amount Amount of funds
-    function convertFundsToShares(uint256 amount)
+    function convertToShares(uint256 amount)
         internal
         view
         returns(uint256 amountInShares)
     {
-        amountInShares = amount.mul(totalPoolShares).div(totalPoolFunds);
+        amountInShares = amount.mul(totalShares).div(totalPooled);
     }
 
-    /// @notice Calculates how many tokens an amount of shares correspond to
+    /// @notice Calculates how many tokens an amount of shares corresponds to
     /// @param amountInShares Amount in shares
-    function convertSharesToFunds(uint256 amountInShares)
+    function convertFromShares(uint256 amountInShares)
         internal
         view
         returns(uint256 amount)
     {
-        amount = amountInShares.mul(totalPoolFunds).div(totalPoolShares);
+        amount = amountInShares.mul(totalPooled).div(totalShares);
     }
 
     /// @notice Gets the amount of voting power a user has at a given timestamp
-    /// @dev Total voting power of all stakers adds up to 1e18
+    /// @dev Total voting power of all users adds up to 1e18
     /// @param userAddress User address
     /// @param timestamp Timestamp
     function getVotingPower(
@@ -68,7 +68,7 @@ contract GetterUtils is EpochUtils, IGetterUtils {
         returns(uint256 votingPower)
     {
         uint256 epochIndex = getEpochIndex(timestamp);
-        votingPower = stakesAtEpoch[userAddress][epochIndex]
-            .mul(1e18).div(totalStakesAtEpoch[epochIndex]);
+        votingPower = stakedAtEpoch[userAddress][epochIndex]
+            .mul(1e18).div(totalStakedAtEpoch[epochIndex]);
     }
 }

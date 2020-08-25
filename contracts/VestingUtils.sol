@@ -26,7 +26,8 @@ contract VestingUtils is PoolUtils, IVestingUtils {
     /// @notice Locks amount number of tokens of the user in a vesting
     /// @param userAddress User address
     /// @param amount Number of tokens to be vested
-    /// @param vestingEpoch Index of the epoch when the funds will be vested
+    /// @param vestingEpoch Index of the epoch when the funds will be available
+    /// to be vested
     function createVesting(
         address userAddress,
         uint256 amount,

@@ -16,10 +16,10 @@ import "./interfaces/IApi3Pool.sol";
 /// EpochUtils->GetterUtils->ClaimUtils->IouUtils->PoolUtils->VestingUtils->
 /// StakeUtils->TransferUtils. Only methods are separated and not the state
 /// variables because there are some circular dependencies between these
-/// functions.
+/// functionalities.
 contract Api3Pool is Ownable, IApi3Pool {
-    // An insurance claim. claimsManager transfers amount-many API3 tokens to
-    // beneficiary if it gets accepted.
+    // An insurance claim. claimsManager transfers amount number of API3 tokens
+    // to beneficiary if it gets accepted.
     struct Claim
     {
         address beneficiary;
@@ -29,8 +29,7 @@ contract Api3Pool is Ownable, IApi3Pool {
 
     // An IOU given to a user that can be redeemed if the claim with claimId
     // resolves to redemptionCondition. Note that the amount that the IOU will
-    // pay out is denoted in pool shares, rather than an absolute amount of
-    // tokens.
+    // pay out is denoted in shares, rather than an absolute amount of tokens.
     struct Iou
     {
         address userAddress;
@@ -39,7 +38,7 @@ contract Api3Pool is Ownable, IApi3Pool {
         ClaimStatus redemptionCondition;
     }
 
-    // A timelock that prevents the user from withdrawing amount-many API3
+    // A timelock that prevents the user from withdrawing amount number of API3
     // tokens from the pool contract before epoch
     struct Vesting
     {
@@ -53,7 +52,7 @@ contract Api3Pool is Ownable, IApi3Pool {
     /// A contract that mints API3 tokens every epoch and adds them to the
     /// vested rewards to be distributed in the next epoch
     IInflationManager public inflationManager;
-    /// A contract that can create and resolve insurance claims
+    /// A contract that is authorized to create and resolve insurance claims
     address public claimsManager;
 
     // ~~~~~~Epoch~~~~~~
@@ -74,13 +73,13 @@ contract Api3Pool is Ownable, IApi3Pool {
 
     // ~~~~~~Pooling~~~~~~
     /// Total funds (i.e., API3 tokens) in the pool. Note that both this and
-    /// totalPoolShares are initialized at 1. This means that initially, 1 API3
-    /// token buys 1 pool share.
-    uint256 public totalPoolFunds = 1;
-    /// Total number of pool shares
-    uint256 public totalPoolShares = 1;
-    /// @dev Mapping of user addresses to pool shares
-    mapping(address => uint256) internal poolShares;
+    /// totalShares are initialized at 1. This means that initially, 1 API3
+    /// token buys 1 share.
+    uint256 public totalPooled = 1;
+    /// Total number of shares
+    uint256 public totalShares = 1;
+    /// @dev Mapping of user addresses to shares
+    mapping(address => uint256) internal shares;
     /// @dev Mapping of user addresses to when they have made their last
     /// unpooling requests
     mapping(address => uint256) internal unpoolRequestEpochs;
@@ -95,11 +94,11 @@ contract Api3Pool is Ownable, IApi3Pool {
     // ~~~~~~Pooling~~~~~~
 
     // ~~~~~~Staking~~~~~~
-    /// @dev Mapping of epochs to total staked pool shares
-    mapping(uint256 => uint256) internal totalStakesAtEpoch;
-    /// @dev Mapping of user addresses to mappings of epochs to staked pool
-    /// shares of individual users
-    mapping(address => mapping(uint256 => uint256)) internal stakesAtEpoch;
+    /// @dev Mapping of epochs to total staked shares
+    mapping(uint256 => uint256) internal totalStakedAtEpoch;
+    /// @dev Mapping of user addresses to mappings of epochs to staked shares
+    /// of individual users
+    mapping(address => mapping(uint256 => uint256)) internal stakedAtEpoch;
     /// @dev Mapping of epochs to total rewards that will be vested (e.g.,
     /// inflationary)
     mapping(uint256 => uint256) internal vestedRewardsAtEpoch;
@@ -149,7 +148,10 @@ contract Api3Pool is Ownable, IApi3Pool {
     uint256 internal noIous;
     /// @dev Mapping of IOU IDs to IOU records
     mapping(bytes32 => Iou) internal ious;
-    uint256 public totalGhostShares = totalPoolShares;
+    /// @dev Total amount of ghost shares caused by IOUs. Ghost shares can be
+    /// removed upon IOU removal, and thus should be ignored while considering
+    /// how much collateral the pool can provide.
+    uint256 public totalGhostShares = totalShares;
     // ~~~~~~IOUs~~~~~~
 
     /// @param api3TokenAddress Address of the API3 token contract
@@ -182,8 +184,8 @@ contract Api3Pool is Ownable, IApi3Pool {
         emit InflationManagerUpdated(inflationManagerAddress);
     }
 
-    /// @notice Updates the claim manager address that can create, accept and
-    /// deny insurance claims
+    /// @notice Updates the claim manager address that is authorized to create,
+    /// accept and deny insurance claims
     /// @dev Can only be called by the owner (i.e., the API3 DAO)
     /// @param claimsManagerAddress Address of the updated claims manager
     function updateClaimsManager(address claimsManagerAddress)

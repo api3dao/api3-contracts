@@ -23,10 +23,10 @@ contract TransferUtils is StakeUtils, ITransferUtils {
         public
         {}
 
-    /// @notice Deposits funds for a user, which can then be pooled and staked
+    /// @notice Deposits funds for a user, which can then be pooled
     /// @param sourceAddress Source address of the funds
     /// @param amount Number of tokens to be deposited
-    /// @param userAddress User that will receive the tokens
+    /// @param userAddress User that will receive the funds
     function deposit(
         address sourceAddress,
         uint256 amount,
@@ -45,8 +45,9 @@ contract TransferUtils is StakeUtils, ITransferUtils {
     /// after a period of time.
     /// @param sourceAddress Source address of the funds
     /// @param amount Number of tokens to be deposited
-    /// @param userAddress User that will receive the tokens
-    /// @param vestingEpoch Index of the epoch when the funds will be vested
+    /// @param userAddress User that will receive the funds
+    /// @param vestingEpoch Index of the epoch when the funds will be available
+    /// to be vested
     function depositWithVesting(
         address sourceAddress,
         uint256 amount,
@@ -64,7 +65,7 @@ contract TransferUtils is StakeUtils, ITransferUtils {
 
     /// @notice Withdraws funds that are not pooled or locked in a vesting
     /// @param destinationAddress Destination address of the funds
-    /// @param amount Number of tokens to be withdrawn
+    /// @param amount Amount of funds to be withdrawn
     function withdraw(
         address destinationAddress,
         uint256 amount
@@ -74,7 +75,7 @@ contract TransferUtils is StakeUtils, ITransferUtils {
     {
         address userAddress = msg.sender;
         uint256 unvested = unvestedFunds[userAddress];
-        uint256 pooled = getPooledFundsOfUser(userAddress);
+        uint256 pooled = getPooled(userAddress);
         uint256 nonWithdrawable = unvested > pooled ? unvested: pooled;
         uint256 balance = balances[userAddress];
         uint256 withdrawable = balance.sub(nonWithdrawable);
@@ -86,7 +87,7 @@ contract TransferUtils is StakeUtils, ITransferUtils {
 
     /// @notice Deposits funds to the vested rewards pool for this epoch
     /// @param sourceAddress Source address of the funds
-    /// @param amount Number of tokens to be deposited
+    /// @param amount Amount of funds to be deposited
     function addVestedRewards(
         address sourceAddress,
         uint256 amount
@@ -104,7 +105,7 @@ contract TransferUtils is StakeUtils, ITransferUtils {
 
     /// @notice Deposits funds to the instant rewards pool for this epoch
     /// @param sourceAddress Source address of the funds
-    /// @param amount Number of tokens to be deposited
+    /// @param amount Amount of funds to be deposited
     function addInstantRewards(
         address sourceAddress,
         uint256 amount

@@ -37,7 +37,7 @@ contract ClaimUtils is GetterUtils, IClaimUtils {
         onlyClaimsManager
     {
         totalActiveClaimsAmount = totalActiveClaimsAmount.add(amount);
-        require(totalPoolFunds >= amount, "Not enough funds in the collateral pool");
+        require(totalPooled >= totalActiveClaimsAmount, "Not enough funds in the collateral pool");
         bytes32 claimId = keccak256(abi.encodePacked(
             noClaims,
             this

@@ -23,8 +23,7 @@ contract PoolUtils is IouUtils, IPoolUtils {
         public
         {}
 
-    /// @notice Has the user pool amount number of tokens and receive pool
-    /// shares
+    /// @notice Has the user pool amount number of tokens and receive shares
     /// @param amount Number of tokens to be pooled
     function pool(uint256 amount)
         external
@@ -32,28 +31,28 @@ contract PoolUtils is IouUtils, IPoolUtils {
     {
         // First have the user pool as if there are no active claims
         address userAddress = msg.sender;
-        uint256 poolable = balances[userAddress].sub(getPooledFundsOfUser(userAddress));
+        uint256 poolable = balances[userAddress].sub(getPooled(userAddress));
         require(poolable >= amount, "Not enough poolable funds");
-        uint256 poolShare = convertFundsToShares(amount);
-        poolShares[userAddress] = poolShares[userAddress].add(poolShare);
-        totalPoolShares = totalPoolShares.add(poolShare);
-        totalPoolFunds = totalPoolFunds.add(amount);
+        uint256 share = convertToShares(amount);
+        shares[userAddress] = shares[userAddress].add(share);
+        totalShares = totalShares.add(share);
+        totalPooled = totalPooled.add(amount);
 
         // Then create an IOU for each active claim
         for (uint256 ind = 0; ind < activeClaims.length; ind++)
         {
             // Simulate a payout for the claim
             bytes32 claimId = activeClaims[ind];
-            uint256 totalPoolFundsAfterPayout = totalPoolFunds.sub(claims[claimId].amount);
+            uint256 totalPooledAfterPayout = totalPooled.sub(claims[claimId].amount);
             // After the payout, if the user redeems their IOU and unpool, they
             // should get exactly amount number of tokens. Calculate how many
             // shares that many tokens would correspond to after the claim
             // payout.
-            uint256 poolSharesRequiredToNotSufferFromPayout = amount
-                .mul(totalPoolShares).div(totalPoolFundsAfterPayout);
-            // User already received poolShare number of shares. They will
+            uint256 sharesRequiredToNotSufferFromPayout = amount
+                .mul(totalShares).div(totalPooledAfterPayout);
+            // User already received share number of shares. They will
             // receive the rest as an IOU.
-            uint256 iouAmountInShares = poolSharesRequiredToNotSufferFromPayout.sub(poolShare);
+            uint256 iouAmountInShares = sharesRequiredToNotSufferFromPayout.sub(share);
             createIou(userAddress, iouAmountInShares, claimId, ClaimStatus.Accepted);
         }
         emit Pooled(userAddress, amount);
@@ -64,7 +63,7 @@ contract PoolUtils is IouUtils, IPoolUtils {
     /// The user can request to unpool once every unpoolRequestCooldown epochs.
     /// @dev If a user has made a request to unpool at epoch t, they can't
     /// repeat their request at t+1 to postpone their unpooling to one epoch
-    /// later, so they need to be specific.
+    /// later, so they need to be specific with their timing.
     function requestToUnpool()
         external
         override
@@ -95,14 +94,14 @@ contract PoolUtils is IouUtils, IPoolUtils {
             "Have to unpool unpoolWaitingPeriod epochs after the request"
             );
         require(
-            amount <= getPooledFundsOfUser(userAddress),
+            amount <= getPooled(userAddress),
             "Not enough unpoolable funds"
         );
 
         // Unlike pool(), we create the IOUs before altering the pool state.
         // This is because these IOUs will be redeemable if the claim is not
         // paid out.
-        uint256 poolShare = convertFundsToShares(amount);
+        uint256 share = convertToShares(amount);
         // We do not want to deduct the entire unpooled amount from the pool
         // because we still need them to potentially pay out the current active
         // claims. To this end, the amount that is secured by IOUs will be left
@@ -113,36 +112,36 @@ contract PoolUtils is IouUtils, IPoolUtils {
         {
             // Simulate a payout for the claim had the user not unpooled
             bytes32 claimId = activeClaims[ind];
-            uint256 iouAmount = poolShare.mul(claims[claimId].amount).div(totalPoolShares);
-            uint256 iouAmountInShares = convertFundsToShares(iouAmount);
+            uint256 iouAmount = share.mul(claims[claimId].amount).div(totalShares);
+            uint256 iouAmountInShares = convertToShares(iouAmount);
             createIou(userAddress, iouAmountInShares, claimId, ClaimStatus.Denied);
             totalIouAmount = totalIouAmount.add(iouAmount);
         }
 
         // Update the pool status
-        poolShares[userAddress] = poolShares[userAddress].sub(poolShare);
-        totalPoolShares = totalPoolShares.sub(poolShare);
-        totalPoolFunds = totalPoolFunds.sub(amount);
+        shares[userAddress] = shares[userAddress].sub(share);
+        totalShares = totalShares.sub(share);
+        totalPooled = totalPooled.sub(amount);
         
         // Deduct the IOUs from the user's balance
         balances[userAddress] = balances[userAddress].sub(totalIouAmount);
 
         // Leave the total IOU amount in the pool as ghost shares
-        uint256 totalIouAmountInShares = convertFundsToShares(totalIouAmount);
-        totalPoolShares = totalPoolShares.add(totalIouAmountInShares);
+        uint256 totalIouAmountInShares = convertToShares(totalIouAmount);
+        totalShares = totalShares.add(totalIouAmountInShares);
         totalGhostShares = totalGhostShares.add(totalIouAmountInShares);
-        totalPoolFunds = totalPoolFunds.add(totalIouAmount);
+        totalPooled = totalPooled.add(totalIouAmount);
         
         // Check if the user has staked in this epoch before unpooling and
         // reduce their staked amount to their updated pooled amount if so
-        uint256 updatedPoolShare = poolShares[userAddress];
+        uint256 updatedShare = shares[userAddress];
         uint256 nextEpochIndex = currentEpochIndex.add(1);
-        uint256 staked = stakesAtEpoch[userAddress][nextEpochIndex];
-        if (staked > updatedPoolShare)
+        uint256 staked = stakedAtEpoch[userAddress][nextEpochIndex];
+        if (staked > updatedShare)
         {
-            totalStakesAtEpoch[nextEpochIndex] = totalStakesAtEpoch[nextEpochIndex]
-                .sub(staked.sub(updatedPoolShare));
-            stakesAtEpoch[userAddress][nextEpochIndex] = updatedPoolShare;
+            totalStakedAtEpoch[nextEpochIndex] = totalStakedAtEpoch[nextEpochIndex]
+                .sub(staked.sub(updatedShare));
+            stakedAtEpoch[userAddress][nextEpochIndex] = updatedShare;
         }
         emit Unpooled(userAddress, amount);
     }

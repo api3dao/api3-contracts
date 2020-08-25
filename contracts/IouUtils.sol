@@ -24,11 +24,12 @@ contract IouUtils is ClaimUtils, IIouUtils {
         {}
 
     /// @notice Creates an IOU record
-    /// @param userAddress User address that will receive the payout
-    /// @param amountInShares Payout amount in shares
+    /// @param userAddress User address that will receive the IOU payment if
+    /// redemptionCondition is met
+    /// @param amountInShares Amount that will be paid in shares if
+    /// redemptionCondition is met
     /// @param claimId Claim ID
-    /// @param redemptionCondition Claim status needed for the IOU to be
-    /// redeemable
+    /// @param redemptionCondition Claim status needed for payment to be made
     function createIou(
         address userAddress,
         uint256 amountInShares,
@@ -58,6 +59,8 @@ contract IouUtils is ClaimUtils, IIouUtils {
     }
 
     /// @notice Redeems an IOU
+    /// @dev If the claim is finalized and redemptionCondition is not met, the
+    /// IOU gets deleted without the user getting paid
     /// @param iouId IOU ID
     function redeem(bytes32 iouId)
         external
@@ -66,12 +69,12 @@ contract IouUtils is ClaimUtils, IIouUtils {
         Iou memory iou = ious[iouId];
         ClaimStatus claimStatus = claims[iou.claimId].status;
         require(
-            claimStatus == ClaimStatus.Pending,
+            claimStatus != ClaimStatus.Pending,
             "IOU not redeemable yet"
             );
         if (claimStatus == iou.redemptionCondition)
         {
-            uint256 amountInTokens = convertSharesToFunds(iou.amountInShares);
+            uint256 amountInTokens = convertFromShares(iou.amountInShares);
             if (iou.redemptionCondition == ClaimStatus.Denied)
             {
                 // While unpooling with an active claim, the user is given an
@@ -79,9 +82,9 @@ contract IouUtils is ClaimUtils, IIouUtils {
                 // amount is left in the pool as "ghost shares" to pay out the
                 // active claim if necessary. If the claim is denied and the
                 // IOU is being redeemed, these ghost shares should be removed.
-                totalPoolShares = totalPoolShares.sub(iou.amountInShares);
+                totalShares = totalShares.sub(iou.amountInShares);
                 totalGhostShares = totalGhostShares.sub(iou.amountInShares);
-                totalPoolFunds = totalPoolFunds.sub(amountInTokens);
+                totalPooled = totalPooled.sub(amountInTokens);
             }
             balances[iou.userAddress] = balances[iou.userAddress].add(amountInTokens);
             emit IouRedeemed(iouId, amountInTokens);
