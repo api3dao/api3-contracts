@@ -54,7 +54,7 @@ contract GetterUtils is EpochUtils, IGetterUtils {
         amount = amountInShares.mul(totalPoolFunds).div(totalPoolShares);
     }
 
-    /// @notice Gets the amount of voting power a user has at a give timestamp
+    /// @notice Gets the amount of voting power a user has at a given timestamp
     /// @dev Total voting power of all stakers adds up to 1e18
     /// @param userAddress User address
     /// @param timestamp Timestamp
