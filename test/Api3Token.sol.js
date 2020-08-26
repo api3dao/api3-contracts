@@ -1,6 +1,7 @@
 /* global ethers */
-const { expect, beforeEach } = require("chai");
-const { describe, it } = require("mocha");
+const { expect } = require("chai");
+const { describe, it, beforeEach } = require("mocha");
+const { deploy } = require("./deployer");
 
 describe("Api3Token", function () {
   let api3Token;
@@ -13,11 +14,7 @@ describe("Api3Token", function () {
       nonMinter: accounts[1],
       minter: accounts[2],
     };
-    const api3TokenFactory = await ethers.getContractFactory(
-      "Api3Token",
-      roles.owner
-    );
-    api3Token = await api3TokenFactory.deploy();
+    ({ api3Token } = await deploy(roles.owner));
   });
 
   it("Deployer receives all of the total supply of 100 million tokens", async function () {
