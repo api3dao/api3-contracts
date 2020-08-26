@@ -1,12 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import "./PoolUtils.sol";
+import "./IouUtils.sol";
 import "./interfaces/IVestingUtils.sol";
 
 
 /// @title Contract where the vesting logic of the API3 pool is implemented
-contract VestingUtils is PoolUtils, IVestingUtils {
+contract VestingUtils is IouUtils, IVestingUtils {
     /// @param api3TokenAddress Address of the API3 token contract
     /// @param epochPeriodInSeconds Length of epochs used to quantize time
     /// @param firstEpochStartTimestamp Starting timestamp of epoch #1
@@ -15,7 +15,7 @@ contract VestingUtils is PoolUtils, IVestingUtils {
         uint256 epochPeriodInSeconds,
         uint256 firstEpochStartTimestamp
         )
-        PoolUtils(
+        IouUtils(
             api3TokenAddress,
             epochPeriodInSeconds,
             firstEpochStartTimestamp

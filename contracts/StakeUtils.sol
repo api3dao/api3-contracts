@@ -26,15 +26,19 @@ contract StakeUtils is VestingUtils, IStakeUtils {
     /// @notice Has the user stake all of their shares
     /// @param userAddress User address
     function stake(address userAddress)
-        external
+        public
         override
     {
         uint256 nextEpochIndex = getCurrentEpochIndex().add(1);
+        // Remove previous stake
         uint256 sharesStaked = stakedAtEpoch[userAddress][nextEpochIndex];
+        totalStakedAtEpoch[nextEpochIndex] = totalStakedAtEpoch[nextEpochIndex]
+            .sub(sharesStaked);
+        // Stake again
         uint256 sharesToStake = shares[userAddress];
         stakedAtEpoch[userAddress][nextEpochIndex] = sharesToStake;
         totalStakedAtEpoch[nextEpochIndex] = totalStakedAtEpoch[nextEpochIndex]
-            .add(sharesToStake.sub(sharesStaked));
+            .add(sharesToStake);
         emit Staked(userAddress, sharesToStake);
     }
 

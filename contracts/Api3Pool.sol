@@ -13,8 +13,8 @@ import "./interfaces/IApi3Pool.sol";
 /// need to give a lead time before unpooling
 /// @dev Different functions of the pool are grouped under separate
 /// contracts that form a chain of inheritance. The chain goes like Api3Pool->
-/// EpochUtils->GetterUtils->ClaimUtils->IouUtils->PoolUtils->VestingUtils->
-/// StakeUtils->TransferUtils. Only methods are separated and not the state
+/// EpochUtils->GetterUtils->ClaimUtils->IouUtils->VestingUtils->StakeUtils->
+/// PoolUtils->TransferUtils. Only methods are separated and not the state
 /// variables because there are some circular dependencies between these
 /// functionalities.
 contract Api3Pool is Ownable, IApi3Pool {

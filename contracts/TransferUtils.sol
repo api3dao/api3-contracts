@@ -1,12 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import "./StakeUtils.sol";
+import "./PoolUtils.sol";
 import "./interfaces/ITransferUtils.sol";
 
 
 /// @title Contract where the transfer logic of the API3 pool is implemented
-contract TransferUtils is StakeUtils, ITransferUtils {
+contract TransferUtils is PoolUtils, ITransferUtils {
     /// @param api3TokenAddress Address of the API3 token contract
     /// @param epochPeriodInSeconds Length of epochs used to quantize time
     /// @param firstEpochStartTimestamp Starting timestamp of epoch #1
@@ -15,7 +15,7 @@ contract TransferUtils is StakeUtils, ITransferUtils {
         uint256 epochPeriodInSeconds,
         uint256 firstEpochStartTimestamp
         )
-        StakeUtils(
+        PoolUtils(
             api3TokenAddress,
             epochPeriodInSeconds,
             firstEpochStartTimestamp

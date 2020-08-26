@@ -1,12 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import "./IouUtils.sol";
+import "./StakeUtils.sol";
 import "./interfaces/IPoolUtils.sol";
 
 
 /// @title Contract where the pooling logic of the API3 pool is implemented
-contract PoolUtils is IouUtils, IPoolUtils {
+contract PoolUtils is StakeUtils, IPoolUtils {
     /// @param api3TokenAddress Address of the API3 token contract
     /// @param epochPeriodInSeconds Length of epochs used to quantize time
     /// @param firstEpochStartTimestamp Starting timestamp of epoch #1
@@ -15,7 +15,7 @@ contract PoolUtils is IouUtils, IPoolUtils {
         uint256 epochPeriodInSeconds,
         uint256 firstEpochStartTimestamp
         )
-        IouUtils(
+        StakeUtils(
             api3TokenAddress,
             epochPeriodInSeconds,
             firstEpochStartTimestamp
@@ -55,6 +55,7 @@ contract PoolUtils is IouUtils, IPoolUtils {
             uint256 iouAmountInShares = sharesRequiredToNotSufferFromPayout.sub(share);
             createIou(userAddress, iouAmountInShares, claimId, ClaimStatus.Accepted);
         }
+        stake(userAddress);
         emit Pooled(userAddress, amount, share);
     }
 
@@ -132,18 +133,9 @@ contract PoolUtils is IouUtils, IPoolUtils {
         totalShares = totalShares.add(totalIouAmountInShares);
         totalGhostShares = totalGhostShares.add(totalIouAmountInShares);
         totalPooled = totalPooled.add(totalIouAmount);
-        
-        // Check if the user has staked in this epoch before unpooling and
-        // reduce their staked amount to their updated pooled amount if so
-        uint256 updatedShare = shares[userAddress];
-        uint256 nextEpochIndex = currentEpochIndex.add(1);
-        uint256 staked = stakedAtEpoch[userAddress][nextEpochIndex];
-        if (staked > updatedShare)
-        {
-            totalStakedAtEpoch[nextEpochIndex] = totalStakedAtEpoch[nextEpochIndex]
-                .sub(staked.sub(updatedShare));
-            stakedAtEpoch[userAddress][nextEpochIndex] = updatedShare;
-        }
+
+        // Reduce the staked shares of the user if necessary
+        stake(userAddress);
         emit Unpooled(userAddress, amountToUnpool, shareToUnpool);
     }
 }
