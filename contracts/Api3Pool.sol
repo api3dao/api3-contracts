@@ -99,6 +99,14 @@ contract Api3Pool is Ownable, IApi3Pool {
     /// @dev Mapping of user addresses to mappings of epochs to staked shares
     /// of individual users
     mapping(address => mapping(uint256 => uint256)) internal stakedAtEpoch;
+    /// @dev Mapping of user addresses to the addresses of their delegates. The
+    /// delegate being 0 means the user is their own delegate. The same effect
+    /// can be achieved by explicitly setting the delegate to be userAddress.
+    mapping(address => address) internal delegates;
+    /// @dev Mapping of user addresses to mappings of epochs to delegated
+    /// voting power of individual users. This includes self-delegation, and is
+    /// a direct representation of voting power.
+    mapping(address => mapping(uint256 => uint256)) internal delegatedAtEpoch;
     /// @dev Mapping of epochs to total rewards that will be vested (e.g.,
     /// inflationary)
     mapping(uint256 => uint256) internal vestedRewardsAtEpoch;

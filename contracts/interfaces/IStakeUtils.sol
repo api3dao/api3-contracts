@@ -7,6 +7,11 @@ interface IStakeUtils {
         address indexed userAddress,
         uint256 amountInShares
         );
+    
+    event UpdatedDelegate(
+        address indexed userAddress,
+        address indexed delegate
+        );
 
     event Collected(
         address indexed userAddress,
@@ -15,6 +20,9 @@ interface IStakeUtils {
         );
 
     function stake(address userAddress)
+        external;
+
+    function updateDelegate(address delegate)
         external;
 
     function collect(address userAddress)

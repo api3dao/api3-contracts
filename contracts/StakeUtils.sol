@@ -29,17 +29,46 @@ contract StakeUtils is VestingUtils, IStakeUtils {
         public
         override
     {
+        address delegate = delegates[userAddress];
+        if (delegate == address(0))
+        {
+            delegate = userAddress;
+        }
         uint256 nextEpochIndex = getCurrentEpochIndex().add(1);
         // Remove previous stake
         uint256 sharesStaked = stakedAtEpoch[userAddress][nextEpochIndex];
         totalStakedAtEpoch[nextEpochIndex] = totalStakedAtEpoch[nextEpochIndex]
             .sub(sharesStaked);
+        delegatedAtEpoch[delegate][nextEpochIndex] = delegatedAtEpoch[delegate][nextEpochIndex].sub(sharesStaked);
         // Stake again
         uint256 sharesToStake = shares[userAddress];
         stakedAtEpoch[userAddress][nextEpochIndex] = sharesToStake;
         totalStakedAtEpoch[nextEpochIndex] = totalStakedAtEpoch[nextEpochIndex]
             .add(sharesToStake);
+        delegatedAtEpoch[delegate][nextEpochIndex] = delegatedAtEpoch[delegate][nextEpochIndex].add(sharesToStake);
         emit Staked(userAddress, sharesToStake);
+    }
+
+    /// @notice Has the user designate a delegate to vote on behalf of them
+    /// @dev Delegate can be set to 0 or userAddress for the user to vote on
+    /// their own behalf
+    /// @param delegate Delegate address
+    function updateDelegate(address delegate)
+        external
+        override
+    {
+        address userAddress = msg.sender;
+        uint256 nextEpochIndex = getCurrentEpochIndex().add(1);
+        // Revoke previous delegation
+        address previousDelegate = delegates[userAddress];
+        uint256 sharesStaked = stakedAtEpoch[userAddress][nextEpochIndex];
+        delegatedAtEpoch[previousDelegate][nextEpochIndex] = delegatedAtEpoch[previousDelegate][nextEpochIndex]
+            .sub(sharesStaked);
+        // Apply new delegation
+        delegates[userAddress] = delegate;
+        delegatedAtEpoch[delegate][nextEpochIndex] = delegatedAtEpoch[delegate][nextEpochIndex]
+            .add(sharesStaked);
+        emit UpdatedDelegate(userAddress, delegate);
     }
 
     /// @notice Has the user collect rewards from the previous epoch

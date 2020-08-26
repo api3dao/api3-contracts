@@ -54,13 +54,13 @@ contract GetterUtils is EpochUtils, IGetterUtils {
         amount = amountInShares.mul(totalPooled).div(totalShares);
     }
 
-    /// @notice Returns the amount of voting power a user has at a given
+    /// @notice Returns the amount of voting power a delegate has at a given
     /// timestamp
-    /// @dev Total voting power of all users adds up to 1e18
-    /// @param userAddress User address
+    /// @dev Total voting power of all delegates adds up to 1e18
+    /// @param delegate Delegate address
     /// @param timestamp Timestamp
     function getVotingPower(
-        address userAddress,
+        address delegate,
         uint256 timestamp
         )
         external
@@ -69,7 +69,7 @@ contract GetterUtils is EpochUtils, IGetterUtils {
         returns(uint256 votingPower)
     {
         uint256 epochIndex = getEpochIndex(timestamp);
-        votingPower = stakedAtEpoch[userAddress][epochIndex]
+        votingPower = delegatedAtEpoch[delegate][epochIndex]
             .mul(1e18).div(totalStakedAtEpoch[epochIndex]);
     }
 
@@ -152,6 +152,35 @@ contract GetterUtils is EpochUtils, IGetterUtils {
         returns(uint256 staked)
     {
         staked = stakedAtEpoch[userAddress][epochIndex];
+    }
+
+    /// @notice Returns the delegate of the user
+    /// @dev 0 being returned means the user is their own delegate
+    /// @param userAddress User address
+    /// @return delegate The address that will vote on behalf of the user
+    function getDelegate(address userAddress)
+        external
+        view
+        override
+        returns(address delegate)
+    {
+        delegate = delegates[userAddress];
+    }
+
+    /// @notice Returns the delegated voting power of the delegate
+    /// @param delegate Delegate address
+    /// @param epochIndex Epoch index
+    /// @return delegated Delegated voting power
+    function getDelegated(
+        address delegate,
+        uint256 epochIndex
+        )
+        external
+        view
+        override
+        returns(uint256 delegated)
+    {
+        delegated = delegatedAtEpoch[delegate][epochIndex];
     }
 
     /// @notice Returns the vested rewards that will be distributed at

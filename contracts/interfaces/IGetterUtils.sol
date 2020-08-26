@@ -6,7 +6,7 @@ import "./IApi3Pool.sol";
 
 interface IGetterUtils {
     function getVotingPower(
-        address userAddress,
+        address delegate,
         uint256 timestamp
         )
         external
@@ -45,6 +45,19 @@ interface IGetterUtils {
         external
         view
         returns(uint256 staked);
+
+    function getDelegate(address userAddress)
+        external
+        view
+        returns(address delegate);
+
+    function getDelegated(
+        address delegate,
+        uint256 epochIndex
+        )
+        external
+        view
+        returns(uint256 delegated);
 
     function getVestedRewards(uint256 epochIndex)
         external
