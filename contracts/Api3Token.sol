@@ -19,8 +19,8 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         ERC20("api3", "api3")
         public
         {
-            // Initial supply is 100 million
-            _mint(msg.sender, 100000000);
+            // Initial supply is 100 million (1e8)
+            _mint(msg.sender, 1e8 * 1e18);
         }
 
     /// @notice Updates if an address is authorized to mint tokens
