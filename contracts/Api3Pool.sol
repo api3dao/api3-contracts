@@ -159,7 +159,7 @@ contract Api3Pool is Ownable, IApi3Pool {
     /// @dev Total amount of ghost shares caused by IOUs. Ghost shares can be
     /// removed upon IOU removal, and thus should be ignored while considering
     /// how much collateral the pool can provide.
-    uint256 public totalGhostShares = totalShares;
+    uint256 public totalGhostShares = 1;
     // ~~~~~~IOUs~~~~~~
 
     /// @param api3TokenAddress Address of the API3 token contract
