@@ -118,15 +118,14 @@ contract PoolUtils is IouUtils, IPoolUtils {
             createIou(userAddress, iouAmountInShares, claimId, ClaimStatus.Denied);
             totalIouAmount = totalIouAmount.add(iouAmount);
         }
+        // Deduct the IOUs from the user's balance
+        balances[userAddress] = balances[userAddress].sub(totalIouAmount);
 
         // Update the pool status
         uint256 amountToUnpool = convertFromShares(shareToUnpool);
         shares[userAddress] = shares[userAddress].sub(shareToUnpool);
         totalShares = totalShares.sub(shareToUnpool);
-        totalPooled = totalPooled.sub(amountToUnpool);
-        
-        // Deduct the IOUs from the user's balance
-        balances[userAddress] = balances[userAddress].sub(totalIouAmount);
+        totalPooled = totalPooled.sub(amountToUnpool);  
 
         // Leave the total IOU amount in the pool as ghost shares
         uint256 totalIouAmountInShares = convertToShares(totalIouAmount);

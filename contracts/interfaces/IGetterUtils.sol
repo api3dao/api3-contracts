@@ -13,6 +13,11 @@ interface IGetterUtils {
         view
         returns(uint256 votingPower);
 
+    function getTotalRealPooled()
+        external
+        view
+        returns(uint256 totalRealPooled);
+
     function getBalance(address userAddress)
         external
         view

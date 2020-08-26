@@ -73,6 +73,19 @@ contract GetterUtils is EpochUtils, IGetterUtils {
             .mul(1e18).div(totalStakedAtEpoch[epochIndex]);
     }
 
+    /// @notice Returns the total pooled funds minus ghost funds. This is
+    /// needed because ghost funds may be removed as IOUs are redeemed, and
+    /// thus cannot be considered as collateral reliably.
+    /// @return totalRealPooled Total pooled funds minus ghost funds
+    function getTotalRealPooled()
+        public
+        view
+        override
+        returns(uint256 totalRealPooled)
+    {
+        totalRealPooled = totalPooled.sub(convertFromShares(totalGhostShares));
+    }
+
     /// @notice Returns the user balance. Includes vested and uvested funds,
     /// but not IOUs.
     /// @param userAddress User address
