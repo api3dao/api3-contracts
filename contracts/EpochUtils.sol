@@ -26,7 +26,7 @@ contract EpochUtils is Api3Pool, IEpochUtils {
         public
         {}
 
-    /// @notice Gets the index of the current epoch
+    /// @notice Returns the index of the current epoch
     function getCurrentEpochIndex()
         public
         view
@@ -36,7 +36,7 @@ contract EpochUtils is Api3Pool, IEpochUtils {
         return getEpochIndex(now);
     }
 
-    /// @notice Gets the index of the epoch at a timestamp
+    /// @notice Returns the index of the epoch at a timestamp
     /// @dev The index of the first epoch is 1. This method returning 0 means
     /// that the epochs have not started yet.
     /// @param timestamp Timestamp

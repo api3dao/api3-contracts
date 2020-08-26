@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
+import "./IApi3Pool.sol";
+
 
 interface IGetterUtils {
     function getVotingPower(
@@ -10,4 +12,90 @@ interface IGetterUtils {
         external
         view
         returns(uint256 votingPower);
+
+    function getBalance(address userAddress)
+        external
+        view
+        returns(uint256 balance);
+
+    function getShare(address userAddress)
+        external
+        view
+        returns(uint256 share);
+
+    function getUnpoolRequestEpoch(address userAddress)
+        external
+        view
+        returns(uint256 unpoolRequestEpoch);
+
+    function getTotalStaked(uint256 epochIndex)
+        external
+        view
+        returns(uint256 totalStaked);
+
+    function getStaked(
+        address userAddress,
+        uint256 epochIndex
+        )
+        external
+        view
+        returns(uint256 staked);
+
+    function getVestedRewards(uint256 epochIndex)
+        external
+        view
+        returns(uint256 vestedRewards);
+
+    function getUnpaidVestedRewards(uint256 epochIndex)
+        external
+        view
+        returns(uint256 unpaidVestedRewards);
+
+    function getInstantRewards(uint256 epochIndex)
+        external
+        view
+        returns(uint256 instantRewards);
+
+    function getUnpaidInstantRewards(uint256 epochIndex)
+        external
+        view
+        returns(uint256 unpaidInstantRewards);
+
+    function getVesting(bytes32 vestingId)
+        external
+        view
+        returns(
+            address userAddress,
+            uint256 amount,
+            uint256 epoch
+            );
+
+    function getUnvestedFund(address userAddress)
+        external
+        view
+        returns(uint256 unvestedFund);
+
+    function getClaim(bytes32 claimId)
+        external
+        view
+        returns(
+            address beneficiary,
+            uint256 amount,
+            IApi3Pool.ClaimStatus status
+            );
+
+    function getActiveClaims()
+        external
+        view
+        returns(bytes32[] memory _activeClaims);
+
+    function getIou(bytes32 iouId)
+        external
+        view
+        returns(
+            address userAddress,
+            uint256 amountInShares,
+            bytes32 claimId,
+            IApi3Pool.ClaimStatus redemptionCondition
+            );
 }

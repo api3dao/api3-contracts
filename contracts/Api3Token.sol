@@ -54,7 +54,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         _mint(account, amount);
     }
 
-    /// @notice Gets if an address is authorized to mint tokens
+    /// @notice Returns if an address is authorized to mint tokens
     /// @param minterAddress Address whose minter authorization status will be
     /// gotten
     /// @return minterStatus Minter authorization status

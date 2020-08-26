@@ -117,7 +117,8 @@ contract InflationManager is IInflationManager {
           }
       }
 
-    /// @notice Gets the number of tokens that needs to be minted for an epoch
+    /// @notice Returns the number of tokens that needs to be minted for an
+    /// epoch
     /// @param indEpoch Epoch index (not the week index)
     function getDeltaTokenSupply(uint256 indEpoch)
         private
