@@ -5,9 +5,7 @@ module.exports = {
       await api3Pool
         .connect(owner)
         .deposit(owner._address, pooler.amount, pooler.account._address);
-      await api3Pool
-        .connect(pooler.account)
-        .pool(pooler.amount);
+      await api3Pool.connect(pooler.account).pool(pooler.amount);
     }
   },
 };
