@@ -27,11 +27,12 @@ contract GetterUtils is EpochUtils, IGetterUtils {
     /// @notice Returns the amount of funds the user has pooled
     /// @param userAddress User address
     function getPooled(address userAddress)
-        internal
+        public
         view
+        override
         returns(uint256 pooled)
     {
-        pooled = totalShares.mul(totalPooled).div(shares[userAddress]);
+        pooled = shares[userAddress].mul(totalPooled).div(totalShares);
     }
 
     /// @notice Calculates how many shares an amount of tokens corresponds to

@@ -5,6 +5,11 @@ import "./IApi3Pool.sol";
 
 
 interface IGetterUtils {
+    function getPooled(address userAddress)
+        external
+        view
+        returns(uint256 pooled);
+
     function getVotingPower(
         address delegate,
         uint256 timestamp

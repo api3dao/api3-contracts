@@ -36,6 +36,7 @@ async function matchParsedLogs(
       expectedParameters[parameterName]
     );
   }
+  return parsedLogs[matchingIndex];
 }
 
 module.exports = {
@@ -46,6 +47,6 @@ module.exports = {
     expectedParameters
   ) {
     const parsedLogs = await getParsedLogs(contract, tx);
-    matchParsedLogs(parsedLogs, expectedSignature, expectedParameters);
+    return matchParsedLogs(parsedLogs, expectedSignature, expectedParameters);
   },
 };

@@ -2,7 +2,7 @@
 const { expect } = require("chai");
 const { describe, it, beforeEach } = require("mocha");
 const { deploy } = require("./deployer");
-const { verifyLog } = require("./helpers");
+const { verifyLog } = require("./util");
 
 describe("Api3Pool", function () {
   let api3Token;

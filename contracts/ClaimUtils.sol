@@ -67,7 +67,8 @@ contract ClaimUtils is GetterUtils, IClaimUtils {
         claims[claimId].status = ClaimStatus.Accepted;
         Claim memory claim = claims[claimId];
         totalActiveClaimsAmount = totalActiveClaimsAmount.sub(claim.amount);
-        api3Token.transferFrom(address(this), claim.beneficiary, claim.amount);
+        totalPooled = totalPooled.sub(claim.amount);
+        api3Token.transfer(claim.beneficiary, claim.amount);
         emit ClaimAccepted(claimId);
     }
 
@@ -95,7 +96,8 @@ contract ClaimUtils is GetterUtils, IClaimUtils {
         {
             if (activeClaims[ind] == claimId)
             {
-                delete activeClaims[ind];
+                activeClaims[ind] = activeClaims[activeClaims.length.sub(1)];
+                activeClaims.pop();
                 return true;
             }
         }
