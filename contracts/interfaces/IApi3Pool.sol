@@ -8,7 +8,7 @@ interface IApi3Pool {
     enum ClaimStatus { Pending, Accepted, Denied }
 
     event InflationManagerUpdated(address inflationManagerAddress);
-    event ClaimsManagerUpdated(address claimsManager);
+    event ClaimsManagerUpdated(address claimsManagerAddress);
     event RewardVestingPeriodUpdated(uint256 rewardVestingPeriod);
     event UnpoolRequestCooldownUpdated(uint256 unpoolRequestCooldown);
     event UnpoolWaitingPeriodUpdated(uint256 unpoolWaitingPeriod);

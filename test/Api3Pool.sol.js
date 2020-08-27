@@ -2,6 +2,7 @@
 const { expect } = require("chai");
 const { describe, it, beforeEach } = require("mocha");
 const { deploy } = require("./deployer");
+const { verifyLog } = require("./helpers");
 
 describe("Api3Pool", function () {
   let api3Token;
@@ -53,27 +54,42 @@ describe("Api3Pool", function () {
   });
 
   it("Owner can update admin paramaters", async function () {
-    await api3Pool
+    let tx = await api3Pool
       .connect(roles.owner)
       .updateInflationManager(roles.inflationManager._address);
+    await verifyLog(api3Pool, tx, "InflationManagerUpdated(address)", {
+      inflationManagerAddress: roles.inflationManager._address,
+    });
     expect(await api3Pool.inflationManager()).to.equal(
       roles.inflationManager._address
     );
 
-    await api3Pool
+    tx = await api3Pool
       .connect(roles.owner)
       .updateClaimsManager(roles.claimsManager._address);
+    await verifyLog(api3Pool, tx, "ClaimsManagerUpdated(address)", {
+      claimsManagerAddress: roles.claimsManager._address,
+    });
     expect(await api3Pool.claimsManager()).to.equal(
       roles.claimsManager._address
     );
 
-    await api3Pool.connect(roles.owner).updateRewardVestingPeriod(100);
+    tx = await api3Pool.connect(roles.owner).updateRewardVestingPeriod(100);
+    await verifyLog(api3Pool, tx, "RewardVestingPeriodUpdated(uint256)", {
+      rewardVestingPeriod: 100,
+    });
     expect(await api3Pool.rewardVestingPeriod()).to.equal(100);
 
-    await api3Pool.connect(roles.owner).updateUnpoolRequestCooldown(4);
+    tx = await api3Pool.connect(roles.owner).updateUnpoolRequestCooldown(4);
+    await verifyLog(api3Pool, tx, "UnpoolRequestCooldownUpdated(uint256)", {
+      unpoolRequestCooldown: 4,
+    });
     expect(await api3Pool.unpoolRequestCooldown()).to.equal(4);
 
-    await api3Pool.connect(roles.owner).updateUnpoolWaitingPeriod(2);
+    tx = await api3Pool.connect(roles.owner).updateUnpoolWaitingPeriod(2);
+    await verifyLog(api3Pool, tx, "UnpoolWaitingPeriodUpdated(uint256)", {
+      unpoolWaitingPeriod: 2,
+    });
     expect(await api3Pool.unpoolWaitingPeriod()).to.equal(2);
   });
 

@@ -2,6 +2,7 @@
 const { expect } = require("chai");
 const { describe, it, beforeEach } = require("mocha");
 const { deploy } = require("./deployer");
+const { verifyLog } = require("./helpers");
 
 describe("Api3Token", function () {
   let api3Token;
@@ -42,9 +43,13 @@ describe("Api3Token", function () {
 
   it("Owner can authorize accounts to mint", async function () {
     // Authorize roles.minter to mint
-    await api3Token
+    let tx = await api3Token
       .connect(roles.owner)
       .updateMinterStatus(roles.minter._address, true);
+    await verifyLog(api3Token, tx, "MinterStatusUpdated(address,bool)", {
+      minterAddress: roles.minter._address,
+      minterStatus: true,
+    });
     const minterMinterStatus = await api3Token.getMinterStatus(
       roles.minter._address
     );
@@ -65,17 +70,25 @@ describe("Api3Token", function () {
 
   it("Owner can revoke minting authorization", async function () {
     // Authorize roles.minter to mint
-    await api3Token
+    let tx = await api3Token
       .connect(roles.owner)
       .updateMinterStatus(roles.minter._address, true);
+    await verifyLog(api3Token, tx, "MinterStatusUpdated(address,bool)", {
+      minterAddress: roles.minter._address,
+      minterStatus: true,
+    });
     let minterMinterStatus = await api3Token.getMinterStatus(
       roles.minter._address
     );
     expect(minterMinterStatus).to.equal(true);
     // Revoke minting authorization
-    await api3Token
+    tx = await api3Token
       .connect(roles.owner)
       .updateMinterStatus(roles.minter._address, false);
+    await verifyLog(api3Token, tx, "MinterStatusUpdated(address,bool)", {
+      minterAddress: roles.minter._address,
+      minterStatus: false,
+    });
     minterMinterStatus = await api3Token.getMinterStatus(roles.minter._address);
     expect(minterMinterStatus).to.equal(false);
     // Attempt to mint
