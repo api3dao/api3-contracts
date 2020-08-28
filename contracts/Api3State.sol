@@ -7,16 +7,10 @@ import "./interfaces/IInflationManager.sol";
 import "./interfaces/IApi3State.sol";
 
 
-/// @title Base API3 pool contract that keeps all the state variables
+/// @title Contract that keeps all the state variables of the API3 pool
 /// @notice The pool owner (i.e., the API3 DAO) uses this contract to update
 /// parameters such as the address of the inflation manager or if the users
 /// need to give a lead time before unpooling
-/// @dev Different functions of the pool are grouped under separate
-/// contracts that form a chain of inheritance. The chain goes like Api3State->
-/// EpochUtils->GetterUtils->ClaimUtils->IouUtils->VestingUtils->StakeUtils->
-/// PoolUtils->TransferUtils->Api3Pool. Only methods are separated and not the
-/// state variables because there are some circular dependencies between these
-/// functionalities.
 contract Api3State is Ownable, IApi3State {
     // An insurance claim. claimsManager transfers amount number of API3 tokens
     // to beneficiary if it gets accepted.
