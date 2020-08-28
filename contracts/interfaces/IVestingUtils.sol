@@ -1,8 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
+import "./IIouUtils.sol";
 
-interface IVestingUtils {
+
+interface IVestingUtils is IIouUtils {
     event VestingCreated(
         bytes32 indexed vestingId,
         address indexed userAddress,

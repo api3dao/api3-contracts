@@ -1,16 +1,17 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import "./IApi3Pool.sol";
+import "./IApi3State.sol";
+import "./IClaimUtils.sol";
 
 
-interface IIouUtils {
+interface IIouUtils is IClaimUtils {
     event IouCreated(
         bytes32 indexed iouId,
         address indexed userAddress,
         uint256 amountInShares,
         bytes32 indexed claimId,
-        IApi3Pool.ClaimStatus redemptionCondition
+        IApi3State.ClaimStatus redemptionCondition
         );
 
     event IouRedeemed(bytes32 indexed iouId, uint256 amount);

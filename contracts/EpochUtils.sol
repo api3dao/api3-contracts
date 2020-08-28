@@ -2,12 +2,12 @@
 pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./Api3Pool.sol";
+import "./Api3State.sol";
 import "./interfaces/IEpochUtils.sol";
 
 
 /// @title Contract where the epoch logic of the API3 pool is implemented
-contract EpochUtils is Api3Pool, IEpochUtils {
+contract EpochUtils is Api3State, IEpochUtils {
     using SafeMath for uint256;
 
     /// @param api3TokenAddress Address of the API3 token contract
@@ -18,7 +18,7 @@ contract EpochUtils is Api3Pool, IEpochUtils {
         uint256 epochPeriodInSeconds,
         uint256 firstEpochStartTimestamp
         )
-        Api3Pool(
+        Api3State(
             api3TokenAddress,
             epochPeriodInSeconds,
             firstEpochStartTimestamp

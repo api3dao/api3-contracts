@@ -3,8 +3,7 @@ pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./interfaces/IApi3Token.sol";
-import "./interfaces/ITransferUtils.sol";
-import "./interfaces/IEpochUtils.sol";
+import "./interfaces/IApi3Pool.sol";
 import "./interfaces/IInflationManager.sol";
 
 
@@ -52,10 +51,8 @@ contract InflationManager is IInflationManager {
 
     /// API3 token contract
     IApi3Token public immutable api3Token;
-    /// API3 pool transfer utilities to add vested rewards
-    ITransferUtils public immutable api3PoolTransfer;
-    /// API3 pool epoch utilities to get the current epoch
-    IEpochUtils public immutable api3PoolEpoch;
+    /// API3 pool contract
+    IApi3Pool public immutable api3Pool;
 
     /// @dev Mapping of epochs to if inflationary rewards are minted
     mapping(uint256 => bool) private mintedInflationaryRewardsAtEpoch;
@@ -78,8 +75,7 @@ contract InflationManager is IInflationManager {
         public
         {
             api3Token = IApi3Token(api3TokenAddress);
-            api3PoolTransfer = ITransferUtils(api3PoolAddress);
-            api3PoolEpoch = IEpochUtils(api3PoolAddress);
+            api3Pool = IApi3Pool(api3PoolAddress);
 
             startEpoch = _startEpoch;
             terminalEpoch = _startEpoch.add(DECAY_PERIOD);
@@ -105,13 +101,13 @@ contract InflationManager is IInflationManager {
         external
         override
       {
-          uint256 currentEpochIndex = api3PoolEpoch.getCurrentEpochIndex();
+          uint256 currentEpochIndex = api3Pool.getCurrentEpochIndex();
           if (!mintedInflationaryRewardsAtEpoch[currentEpochIndex])
           {
               uint256 amount = getDeltaTokenSupply(currentEpochIndex);
               api3Token.mint(address(this), amount);
-              api3Token.approve(address(api3PoolTransfer), amount);
-              api3PoolTransfer.addVestedRewards(address(this), amount);
+              api3Token.approve(address(api3Pool), amount);
+              api3Pool.addVestedRewards(address(this), amount);
               mintedInflationaryRewardsAtEpoch[currentEpochIndex] = true;
               emit InflationaryRewardsMinted(currentEpochIndex);
           }

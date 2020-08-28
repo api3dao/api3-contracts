@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import "./IApi3Pool.sol";
+import "./IEpochUtils.sol";
 
 
-interface IGetterUtils {
+interface IGetterUtils is IEpochUtils {
     function getPooled(address userAddress)
         external
         view
@@ -104,7 +104,7 @@ interface IGetterUtils {
         returns(
             address beneficiary,
             uint256 amount,
-            IApi3Pool.ClaimStatus status
+            IApi3State.ClaimStatus status
             );
 
     function getActiveClaims()
@@ -119,6 +119,6 @@ interface IGetterUtils {
             address userAddress,
             uint256 amountInShares,
             bytes32 claimId,
-            IApi3Pool.ClaimStatus redemptionCondition
+            IApi3State.ClaimStatus redemptionCondition
             );
 }

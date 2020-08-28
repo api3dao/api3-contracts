@@ -1,8 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
+import "./IPoolUtils.sol";
 
-interface ITransferUtils {
+
+interface ITransferUtils is IPoolUtils {
     event Deposited(
         address indexed sourceAddress,
         uint256 amount,

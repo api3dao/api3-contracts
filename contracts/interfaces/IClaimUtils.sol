@@ -1,8 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
+import "./IGetterUtils.sol";
 
-interface IClaimUtils {
+
+interface IClaimUtils is IGetterUtils {
     event ClaimCreated(
         bytes32 indexed claimId,
         address indexed beneficiary,

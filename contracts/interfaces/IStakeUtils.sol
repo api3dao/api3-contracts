@@ -1,8 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
+import "./IVestingUtils.sol";
 
-interface IStakeUtils {
+
+interface IStakeUtils is IVestingUtils {
     event Staked(
         address indexed userAddress,
         uint256 amountInShares

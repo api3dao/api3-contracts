@@ -1,8 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
+import "./IStakeUtils.sol";
 
-interface IPoolUtils {
+
+interface IPoolUtils is IStakeUtils {
     event Pooled(
         address indexed userAddress,
         uint256 amount,
