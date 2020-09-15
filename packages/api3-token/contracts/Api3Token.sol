@@ -15,12 +15,15 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
     /// @dev Mapping of addresses to if they are authorized to mint tokens
     mapping(address => bool) private isMinter;
 
-    constructor()
+    /// @param tokenOwner Account that will receive the entire token supply and
+    /// the ownership of the token
+    constructor(address tokenOwner)
         ERC20("API3", "API3")
         public
         {
             // Initial supply is 100 million (1e8)
-            _mint(msg.sender, 1e8 * 1e18);
+            _mint(tokenOwner, 1e8 * 1e18);
+            transferOwnership(tokenOwner);
         }
 
     /// @notice Updates if an address is authorized to mint tokens

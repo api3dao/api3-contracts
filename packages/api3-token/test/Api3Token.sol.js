@@ -10,17 +10,18 @@ describe("Api3Token", function () {
   beforeEach(async () => {
     const accounts = await ethers.getSigners();
     roles = {
-      owner: accounts[0],
-      nonMinter: accounts[1],
-      minter: accounts[2],
+      deployer: accounts[0],
+      dao: accounts[1],
+      nonMinter: accounts[2],
+      minter: accounts[3],
     };
-    api3Token = await deployer.deployToken(roles.owner);
+    api3Token = await deployer.deployToken(roles.deployer, roles.dao._address);
   });
 
-  it("Deployer receives all of the total supply of 100 million tokens", async function () {
+  it("DAO receives all of the total supply of 100 million tokens", async function () {
     const expectedTotalSupply = ethers.utils.parseEther((1e8).toString());
     const totalSupply = await api3Token.totalSupply();
-    const deployerBalance = await api3Token.balanceOf(roles.owner._address);
+    const deployerBalance = await api3Token.balanceOf(roles.dao._address);
     expect(totalSupply).to.equal(expectedTotalSupply);
     expect(deployerBalance).to.equal(expectedTotalSupply);
   });
@@ -43,7 +44,7 @@ describe("Api3Token", function () {
   it("Owner can authorize accounts to mint", async function () {
     // Authorize roles.minter to mint
     let tx = await api3Token
-      .connect(roles.owner)
+      .connect(roles.dao)
       .updateMinterStatus(roles.minter._address, true);
     await utils.verifyLog(api3Token, tx, "MinterStatusUpdated(address,bool)", {
       minterAddress: roles.minter._address,
@@ -70,7 +71,7 @@ describe("Api3Token", function () {
   it("Owner can revoke minting authorization", async function () {
     // Authorize roles.minter to mint
     let tx = await api3Token
-      .connect(roles.owner)
+      .connect(roles.dao)
       .updateMinterStatus(roles.minter._address, true);
     await utils.verifyLog(api3Token, tx, "MinterStatusUpdated(address,bool)", {
       minterAddress: roles.minter._address,
@@ -82,7 +83,7 @@ describe("Api3Token", function () {
     expect(minterMinterStatus).to.equal(true);
     // Revoke minting authorization
     tx = await api3Token
-      .connect(roles.owner)
+      .connect(roles.dao)
       .updateMinterStatus(roles.minter._address, false);
     await utils.verifyLog(api3Token, tx, "MinterStatusUpdated(address,bool)", {
       minterAddress: roles.minter._address,

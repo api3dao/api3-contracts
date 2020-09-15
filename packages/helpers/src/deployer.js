@@ -1,11 +1,11 @@
 /* global ethers */
 
-async function deployToken(deployer) {
+async function deployToken(deployer, destination) {
   const api3TokenFactory = await ethers.getContractFactory(
     "Api3Token",
     deployer
   );
-  const api3Token = await api3TokenFactory.deploy();
+  const api3Token = await api3TokenFactory.deploy(destination);
   return api3Token;
 }
 
