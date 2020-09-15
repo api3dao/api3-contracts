@@ -16,7 +16,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
     mapping(address => bool) private isMinter;
 
     constructor()
-        ERC20("api3", "api3")
+        ERC20("API3", "API3")
         public
         {
             // Initial supply is 100 million (1e8)

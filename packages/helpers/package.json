@@ -1,0 +1,5 @@
+{
+  "name": "@api3-contracts/helpers",
+  "version": "0.1.0",
+  "main": "src/index.js"
+}

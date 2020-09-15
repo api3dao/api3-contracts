@@ -1,8 +1,7 @@
 /* global ethers */
 const { expect } = require("chai");
 const { describe, it, beforeEach } = require("mocha");
-const { deploy } = require("./deployer");
-const { verifyLog } = require("./util");
+const { deployer, utils } = require("@api3-contracts/helpers");
 
 describe("Api3Token", function () {
   let api3Token;
@@ -15,7 +14,7 @@ describe("Api3Token", function () {
       nonMinter: accounts[1],
       minter: accounts[2],
     };
-    ({ api3Token } = await deploy(roles.owner));
+    api3Token = await deployer.deployToken(roles.owner);
   });
 
   it("Deployer receives all of the total supply of 100 million tokens", async function () {
@@ -46,7 +45,7 @@ describe("Api3Token", function () {
     let tx = await api3Token
       .connect(roles.owner)
       .updateMinterStatus(roles.minter._address, true);
-    await verifyLog(api3Token, tx, "MinterStatusUpdated(address,bool)", {
+    await utils.verifyLog(api3Token, tx, "MinterStatusUpdated(address,bool)", {
       minterAddress: roles.minter._address,
       minterStatus: true,
     });
@@ -73,7 +72,7 @@ describe("Api3Token", function () {
     let tx = await api3Token
       .connect(roles.owner)
       .updateMinterStatus(roles.minter._address, true);
-    await verifyLog(api3Token, tx, "MinterStatusUpdated(address,bool)", {
+    await utils.verifyLog(api3Token, tx, "MinterStatusUpdated(address,bool)", {
       minterAddress: roles.minter._address,
       minterStatus: true,
     });
@@ -85,7 +84,7 @@ describe("Api3Token", function () {
     tx = await api3Token
       .connect(roles.owner)
       .updateMinterStatus(roles.minter._address, false);
-    await verifyLog(api3Token, tx, "MinterStatusUpdated(address,bool)", {
+    await utils.verifyLog(api3Token, tx, "MinterStatusUpdated(address,bool)", {
       minterAddress: roles.minter._address,
       minterStatus: false,
     });

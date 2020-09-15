@@ -2,7 +2,7 @@
 pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./interfaces/IApi3Token.sol";
+import "@api3-contracts/api3-token/contracts/interfaces/IApi3Token.sol";
 import "./interfaces/IApi3Pool.sol";
 import "./interfaces/IInflationManager.sol";
 

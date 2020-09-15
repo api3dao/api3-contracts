@@ -1,13 +1,14 @@
 {
-  "name": "@api3-contracts/api3-pool",
+  "name": "@api3-contracts/api3-dao-v1",
   "version": "0.1.0",
   "scripts": {
-    "build": "buidler compile && cp -a ../api3-token/artifacts/. ./artifacts/",
+    "build": "buidler compile",
     "test": "buidler test"
   },
   "devDependencies": {
     "@api3-contracts/helpers": "^0.1.0",
     "@api3-contracts/api3-token": "^0.1.0",
+    "@api3-contracts/api3-pool": "^0.1.0",
     "@nomiclabs/buidler": "^1.4.2",
     "@nomiclabs/buidler-ethers": "^2.0.0",
     "@nomiclabs/buidler-waffle": "^2.0.0",
