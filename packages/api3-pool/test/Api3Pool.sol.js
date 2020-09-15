@@ -1,8 +1,7 @@
 /* global ethers */
 const { expect } = require("chai");
 const { describe, it, beforeEach } = require("mocha");
-const { deploy } = require("./deployer");
-const { verifyLog } = require("./util");
+const { deployer, utils } = require("@api3-contracts/helpers");
 
 describe("Api3Pool", function () {
   let api3Token;
@@ -19,7 +18,7 @@ describe("Api3Pool", function () {
       claimsManager: accounts[2],
       randomPerson: accounts[9],
     };
-    ({ api3Token, api3Pool } = await deploy(
+    ({ api3Token, api3Pool } = await deployer.deployAll(
       roles.owner,
       epochPeriodInSeconds,
       firstEpochStartTimestamp
@@ -57,7 +56,7 @@ describe("Api3Pool", function () {
     let tx = await api3Pool
       .connect(roles.owner)
       .updateInflationManager(roles.inflationManager._address);
-    await verifyLog(api3Pool, tx, "InflationManagerUpdated(address)", {
+    await utils.verifyLog(api3Pool, tx, "InflationManagerUpdated(address)", {
       inflationManagerAddress: roles.inflationManager._address,
     });
     expect(await api3Pool.inflationManager()).to.equal(
@@ -67,7 +66,7 @@ describe("Api3Pool", function () {
     tx = await api3Pool
       .connect(roles.owner)
       .updateClaimsManager(roles.claimsManager._address);
-    await verifyLog(api3Pool, tx, "ClaimsManagerUpdated(address)", {
+    await utils.verifyLog(api3Pool, tx, "ClaimsManagerUpdated(address)", {
       claimsManagerAddress: roles.claimsManager._address,
     });
     expect(await api3Pool.claimsManager()).to.equal(
@@ -75,19 +74,24 @@ describe("Api3Pool", function () {
     );
 
     tx = await api3Pool.connect(roles.owner).updateRewardVestingPeriod(100);
-    await verifyLog(api3Pool, tx, "RewardVestingPeriodUpdated(uint256)", {
+    await utils.verifyLog(api3Pool, tx, "RewardVestingPeriodUpdated(uint256)", {
       rewardVestingPeriod: 100,
     });
     expect(await api3Pool.rewardVestingPeriod()).to.equal(100);
 
     tx = await api3Pool.connect(roles.owner).updateUnpoolRequestCooldown(4);
-    await verifyLog(api3Pool, tx, "UnpoolRequestCooldownUpdated(uint256)", {
-      unpoolRequestCooldown: 4,
-    });
+    await utils.verifyLog(
+      api3Pool,
+      tx,
+      "UnpoolRequestCooldownUpdated(uint256)",
+      {
+        unpoolRequestCooldown: 4,
+      }
+    );
     expect(await api3Pool.unpoolRequestCooldown()).to.equal(4);
 
     tx = await api3Pool.connect(roles.owner).updateUnpoolWaitingPeriod(2);
-    await verifyLog(api3Pool, tx, "UnpoolWaitingPeriodUpdated(uint256)", {
+    await utils.verifyLog(api3Pool, tx, "UnpoolWaitingPeriodUpdated(uint256)", {
       unpoolWaitingPeriod: 2,
     });
     expect(await api3Pool.unpoolWaitingPeriod()).to.equal(2);

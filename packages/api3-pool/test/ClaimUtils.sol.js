@@ -1,9 +1,8 @@
 /* global ethers */
 const { expect } = require("chai");
 const { describe, it, beforeEach } = require("mocha");
-const { deploy } = require("./deployer");
+const { deployer, utils } = require("@api3-contracts/helpers");
 const { setUpPool } = require("./helper");
-const { verifyLog } = require("./util");
 const ClaimStatus = Object.freeze({ Pending: 0, Accepted: 1, Denied: 2 });
 
 describe("ClaimUtils", function () {
@@ -34,7 +33,7 @@ describe("ClaimUtils", function () {
         amount: ethers.utils.parseEther((3e3).toString()),
       },
     ];
-    ({ api3Token, api3Pool } = await deploy(roles.owner));
+    ({ api3Token, api3Pool } = await deployer.deployAll(roles.owner));
     await api3Pool
       .connect(roles.owner)
       .updateClaimsManager(roles.claimsManager._address);
@@ -46,7 +45,7 @@ describe("ClaimUtils", function () {
     let tx = await api3Pool
       .connect(roles.claimsManager)
       .createClaim(roles.claimBeneficiary._address, claimAmount);
-    const log = await verifyLog(
+    const log = await utils.verifyLog(
       api3Pool,
       tx,
       "ClaimCreated(bytes32,address,uint256)",
@@ -87,7 +86,7 @@ describe("ClaimUtils", function () {
     let tx = await api3Pool
       .connect(roles.claimsManager)
       .createClaim(roles.claimBeneficiary._address, claimAmount);
-    const log = await verifyLog(
+    const log = await utils.verifyLog(
       api3Pool,
       tx,
       "ClaimCreated(bytes32,address,uint256)",
@@ -103,7 +102,7 @@ describe("ClaimUtils", function () {
     tx = await api3Pool
       .connect(roles.claimsManager)
       .acceptClaim(log.args.claimId);
-    await verifyLog(api3Pool, tx, "ClaimAccepted(bytes32)", {
+    await utils.verifyLog(api3Pool, tx, "ClaimAccepted(bytes32)", {
       claimId: log.args.claimId,
     });
     const totalPooledAfter = await api3Pool.totalPooled();
@@ -141,7 +140,7 @@ describe("ClaimUtils", function () {
     let tx = await api3Pool
       .connect(roles.claimsManager)
       .createClaim(roles.claimBeneficiary._address, claimAmount);
-    const log = await verifyLog(
+    const log = await utils.verifyLog(
       api3Pool,
       tx,
       "ClaimCreated(bytes32,address,uint256)",
@@ -161,7 +160,7 @@ describe("ClaimUtils", function () {
     let tx = await api3Pool
       .connect(roles.claimsManager)
       .createClaim(roles.claimBeneficiary._address, claimAmount);
-    const log = await verifyLog(
+    const log = await utils.verifyLog(
       api3Pool,
       tx,
       "ClaimCreated(bytes32,address,uint256)",
@@ -178,7 +177,7 @@ describe("ClaimUtils", function () {
     tx = await api3Pool
       .connect(roles.claimsManager)
       .denyClaim(log.args.claimId);
-    await verifyLog(api3Pool, tx, "ClaimDenied(bytes32)", {
+    await utils.verifyLog(api3Pool, tx, "ClaimDenied(bytes32)", {
       claimId: log.args.claimId,
     });
     const user1PooledAfter = await api3Pool.getPooled(
@@ -213,7 +212,7 @@ describe("ClaimUtils", function () {
     let tx = await api3Pool
       .connect(roles.claimsManager)
       .createClaim(roles.claimBeneficiary._address, claimAmount);
-    const log = await verifyLog(
+    const log = await utils.verifyLog(
       api3Pool,
       tx,
       "ClaimCreated(bytes32,address,uint256)",
@@ -233,7 +232,7 @@ describe("ClaimUtils", function () {
     let tx = await api3Pool
       .connect(roles.claimsManager)
       .createClaim(roles.claimBeneficiary._address, claimAmount);
-    const log1 = await verifyLog(
+    const log1 = await utils.verifyLog(
       api3Pool,
       tx,
       "ClaimCreated(bytes32,address,uint256)",
@@ -245,7 +244,7 @@ describe("ClaimUtils", function () {
     tx = await api3Pool
       .connect(roles.claimsManager)
       .createClaim(roles.claimBeneficiary._address, claimAmount);
-    const log2 = await verifyLog(
+    const log2 = await utils.verifyLog(
       api3Pool,
       tx,
       "ClaimCreated(bytes32,address,uint256)",
@@ -257,7 +256,7 @@ describe("ClaimUtils", function () {
     tx = await api3Pool
       .connect(roles.claimsManager)
       .createClaim(roles.claimBeneficiary._address, claimAmount);
-    const log3 = await verifyLog(
+    const log3 = await utils.verifyLog(
       api3Pool,
       tx,
       "ClaimCreated(bytes32,address,uint256)",
