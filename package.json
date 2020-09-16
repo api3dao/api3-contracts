@@ -2,10 +2,12 @@
   "name": "api3-contracts",
   "scripts": {
     "bootstrap": "npm install && lerna bootstrap --hoist",
+    "build": "lerna run build",
     "lint": "npm run lint:eslint && npm run lint:solhint",
     "lint:solhint": "solhint ./**/*.sol",
     "lint:eslint": "eslint . --ext .js",
-    "prettify": "prettier --write \"./**/*.js\""
+    "prettify": "prettier --write \"./**/*.js\"",
+    "test": "lerna run test"
   },
   "devDependencies": {
     "lerna": "^3.22.1",

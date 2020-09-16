@@ -1,6 +1,4 @@
-/* global ethers */
 const { expect } = require("chai");
-const { describe, it, beforeEach } = require("mocha");
 const { deployer, utils } = require("@api3-contracts/helpers");
 
 describe("Api3Token", function () {

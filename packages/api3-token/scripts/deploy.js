@@ -1,4 +1,3 @@
-/* global ethers */
 const { deployer } = require("@api3-contracts/helpers");
 
 async function main() {

@@ -1,6 +1,4 @@
-/* global ethers */
 const { expect } = require("chai");
-const { describe, it, beforeEach } = require("mocha");
 const { deployer, utils } = require("@api3-contracts/helpers");
 
 describe("Api3Pool", function () {
@@ -18,8 +16,9 @@ describe("Api3Pool", function () {
       claimsManager: accounts[2],
       randomPerson: accounts[9],
     };
-    ({ api3Token, api3Pool } = await deployer.deployAll(
+    ({ api3Token, api3Pool } = await deployer.deployPoolAndToken(
       roles.owner,
+      roles.owner._address,
       epochPeriodInSeconds,
       firstEpochStartTimestamp
     ));

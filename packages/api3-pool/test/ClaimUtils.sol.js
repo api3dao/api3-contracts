@@ -1,6 +1,4 @@
-/* global ethers */
 const { expect } = require("chai");
-const { describe, it, beforeEach } = require("mocha");
 const { deployer, utils } = require("@api3-contracts/helpers");
 const { setUpPool } = require("./helper");
 const ClaimStatus = Object.freeze({ Pending: 0, Accepted: 1, Denied: 2 });
@@ -33,7 +31,10 @@ describe("ClaimUtils", function () {
         amount: ethers.utils.parseEther((3e3).toString()),
       },
     ];
-    ({ api3Token, api3Pool } = await deployer.deployAll(roles.owner));
+    ({ api3Token, api3Pool } = await deployer.deployPoolAndToken(
+      roles.owner,
+      roles.owner._address
+    ));
     await api3Pool
       .connect(roles.owner)
       .updateClaimsManager(roles.claimsManager._address);
