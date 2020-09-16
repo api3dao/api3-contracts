@@ -10,32 +10,39 @@ interface ITimelockManager {
 
     function transferAndLock(
         address source,
+        address owner,
         uint256 amount,
-        address owner
+        uint256 releaseTime
         )
         external;
 
     function transferAndLockMultiple(
         address source,
+        address[] calldata owners,
         uint256[] calldata amounts,
-        address[] calldata owners
+        uint256[] calldata releaseTimes
         )
         external;
 
     function withdraw(
-        address destination,
-        uint256 amount
+        uint256 indTimelock,
+        address destination
         )
         external;
 
     function withdrawToPool(
-        address beneficiary,
-        uint256 amount
+        uint256 indTimelock,
+        address api3PoolAddress,
+        address beneficiary
         )
         external;
 
-    function getTokenAmount(address owner)
+    function getTimelocks()
         external
         view
-        returns (uint256 amount);
+        returns (
+            address[] memory owners,
+            uint256[] memory amounts,
+            uint256[] memory releaseTimes
+            );
 }
