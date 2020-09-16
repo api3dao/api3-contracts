@@ -16,7 +16,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
     mapping(address => bool) private isMinter;
 
     /// @param tokenOwner Account that will receive the entire token supply and
-    /// the ownership of the token
+    /// the ownership of the token (i.e., the API3 DAO)
     constructor(address tokenOwner)
         ERC20("API3", "API3")
         public
