@@ -1,6 +1,5 @@
 require('dotenv').config();
 usePlugin("@nomiclabs/buidler-waffle");
-usePlugin("@nomiclabs/buidler-etherscan");
 module.exports = {
   networks: {
     buidlerevm: {
