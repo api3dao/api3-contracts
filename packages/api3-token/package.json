@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "scripts": {
     "build": "buidler compile",
-    "script": "buidler run scripts/script.js",
+    "deploy-mainnet": "buidler run --network mainnet scripts/deploy.js",
+    "deploy-rinkeby": "buidler run --network rinkeby scripts/deploy.js",
+    "flatten": "truffle-flattener ./contracts/Api3Token.sol > FlatApi3Token.sol",
     "test": "buidler test"
   },
   "devDependencies": {
@@ -13,7 +15,9 @@
     "@nomiclabs/buidler-waffle": "^2.0.0",
     "@openzeppelin/contracts": "^3.1.0",
     "chai": "^4.2.0",
+    "dotenv": "^8.2.0",
     "ethereum-waffle": "^3.0.2",
-    "ethers": "^5.0.7"
+    "ethers": "^5.0.7",
+    "truffle-flattener": "^1.5.0"
   }
 }

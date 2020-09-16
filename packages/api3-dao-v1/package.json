@@ -2,7 +2,9 @@
   "name": "@api3-contracts/api3-dao-v1",
   "version": "0.1.0",
   "scripts": {
-    "build": "buidler compile",
+    "copy-artifacts:api3-token": "cp -a ../api3-token/artifacts/. ./artifacts/",
+    "copy-artifacts:api3-pool": "cp -a ../api3-pool/artifacts/. ./artifacts/",
+    "build": "buidler compile && npm run copy-artifacts:api3-token && npm run copy-artifacts:api3-pool",
     "test": "buidler test"
   },
   "devDependencies": {

@@ -2,7 +2,8 @@
   "name": "@api3-contracts/api3-pool",
   "version": "0.1.0",
   "scripts": {
-    "build": "buidler compile && cp -a ../api3-token/artifacts/. ./artifacts/",
+    "copy-artifacts:api3-token": "cp -a ../api3-token/artifacts/. ./artifacts/",
+    "build": "buidler compile && npm run copy-artifacts:api3-token",
     "test": "buidler test"
   },
   "devDependencies": {
