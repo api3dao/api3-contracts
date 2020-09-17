@@ -345,7 +345,11 @@ describe("TimelockManager", function () {
     await expect(
       timelockManager
         .connect(roles.owner1)
-        .withdrawToPool(indTimelock, ethers.constants.AddressZero, roles.owner1._address)
+        .withdrawToPool(
+          indTimelock,
+          ethers.constants.AddressZero,
+          roles.owner1._address
+        )
     ).to.be.revertedWith("API3 pool addresses do not match");
   });
 
