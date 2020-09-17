@@ -134,6 +134,14 @@ contract TimelockManager is Ownable, ITimelockManager {
         external
         override
     {
+        require(
+            indTimelock < noTimelocks,
+            "No such timelock exists"
+            );
+        require(
+            destination != address(0),
+            "Cannot withdraw to address(0)"
+            );
         Timelock memory timelock = timelocks[indTimelock];
         require(
             msg.sender == timelock.owner,
@@ -164,6 +172,14 @@ contract TimelockManager is Ownable, ITimelockManager {
         external
         override
     {
+        require(
+            indTimelock < noTimelocks,
+            "No such timelock exists"
+            );
+        require(
+            beneficiary != address(0),
+            "Cannot withdraw to benefit address(0)"
+            );
         require(address(api3Pool) != address(0), "API3 pool not set yet");
         require(
             address(api3Pool) == api3PoolAddress,
