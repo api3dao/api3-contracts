@@ -105,6 +105,7 @@ contract TimelockManager is Ownable, ITimelockManager {
         )
         external
         override
+        onlyOwner
     {
         require(
             owners.length == amounts.length && owners.length == releaseTimes.length,
