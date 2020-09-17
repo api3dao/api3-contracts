@@ -10,30 +10,31 @@ describe("Api3Token", function () {
     roles = {
       deployer: accounts[0],
       dao: accounts[1],
-      nonMinter: accounts[2],
-      minter: accounts[3],
+      minter: accounts[2],
+      randomPerson: accounts[9],
     };
     api3Token = await deployer.deployToken(roles.deployer, roles.dao._address);
   });
 
-  it("DAO receives all of the total supply of 100 million tokens", async function () {
+  it("DAO receives the ownership of the token contract and the minted tokens at deployment", async function () {
     const expectedTotalSupply = ethers.utils.parseEther((1e8).toString());
     const totalSupply = await api3Token.totalSupply();
-    const deployerBalance = await api3Token.balanceOf(roles.dao._address);
+    const daoBalance = await api3Token.balanceOf(roles.dao._address);
     expect(totalSupply).to.equal(expectedTotalSupply);
-    expect(deployerBalance).to.equal(expectedTotalSupply);
+    expect(daoBalance).to.equal(expectedTotalSupply);
+    expect(await api3Token.owner()).to.equal(roles.dao._address);
   });
 
   it("Accounts are not authorized to mint by default", async function () {
-    const nonMinterMinterStatus = await api3Token.getMinterStatus(
-      roles.nonMinter._address
+    const randomPersonMinterStatus = await api3Token.getMinterStatus(
+      roles.randomPerson._address
     );
-    expect(nonMinterMinterStatus).to.equal(false);
+    expect(randomPersonMinterStatus).to.equal(false);
     await expect(
       api3Token
-        .connect(roles.nonMinter)
+        .connect(roles.randomPerson)
         .mint(
-          roles.nonMinter._address,
+          roles.randomPerson._address,
           ethers.utils.parseEther((1e8).toString())
         )
     ).to.be.revertedWith("Only minters are allowed to mint");
