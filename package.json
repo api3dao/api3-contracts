@@ -7,7 +7,7 @@
     "lint:solhint": "solhint ./**/*.sol",
     "lint:eslint": "eslint . --ext .js",
     "prettify": "prettier --write \"./**/*.js\"",
-    "test": "lerna run test"
+    "test": "npm run build && lerna run test"
   },
   "devDependencies": {
     "lerna": "^3.22.1",
