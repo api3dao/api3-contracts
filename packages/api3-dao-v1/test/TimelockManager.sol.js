@@ -15,12 +15,20 @@ describe("TimelockManager", function () {
         timelockManager.address,
         ethers.utils.parseEther((1e3).toString())
       );
-    await timelockManager.connect(roles.dao).transferAndLockMultiple(
+    let tx = await timelockManager.connect(roles.dao).transferAndLockMultiple(
       roles.dao._address,
       timelocks.map((timelock) => timelock.owner),
       timelocks.map((timelock) => timelock.amount),
       timelocks.map((timelock) => timelock.releaseTime)
     );
+    for (const timelock of timelocks) {
+      await utils.verifyLog(timelockManager, tx, "TransferredAndLocked(address,address,uint256,uint256)", {
+        source: roles.dao._address,
+        owner: timelock.owner,
+        amount: timelock.amount,
+        releaseTime: timelock.releaseTime
+        });
+    }
   }
 
   async function verifyDeployedTimelocks() {
@@ -113,7 +121,7 @@ describe("TimelockManager", function () {
         ethers.utils.parseEther((1e3).toString())
       );
     for (const timelock of timelocks) {
-      await timelockManager
+      let tx = await timelockManager
         .connect(roles.dao)
         .transferAndLock(
           roles.dao._address,
@@ -121,6 +129,12 @@ describe("TimelockManager", function () {
           timelock.amount,
           timelock.releaseTime
         );
+      await utils.verifyLog(timelockManager, tx, "TransferredAndLocked(address,address,uint256,uint256)", {
+        source: roles.dao._address,
+        owner: timelock.owner,
+        amount: timelock.amount,
+        releaseTime: timelock.releaseTime
+        });
     }
     await verifyDeployedTimelocks();
   });

@@ -5,6 +5,13 @@ pragma solidity 0.6.12;
 interface ITimelockManager {
     event Api3PoolUpdated(address api3PoolAddress);
 
+    event TransferredAndLocked(
+        address source,
+        address owner,
+        uint256 amount,
+        uint256 releaseTime
+    );
+
     function updateApi3Pool(address api3PoolAddress)
         external;
 
