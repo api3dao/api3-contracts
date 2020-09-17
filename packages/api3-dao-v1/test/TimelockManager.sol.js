@@ -22,12 +22,17 @@ describe("TimelockManager", function () {
       timelocks.map((timelock) => timelock.releaseTime)
     );
     for (const timelock of timelocks) {
-      await utils.verifyLog(timelockManager, tx, "TransferredAndLocked(address,address,uint256,uint256)", {
-        source: roles.dao._address,
-        owner: timelock.owner,
-        amount: timelock.amount,
-        releaseTime: timelock.releaseTime
-        });
+      await utils.verifyLog(
+        timelockManager,
+        tx,
+        "TransferredAndLocked(address,address,uint256,uint256)",
+        {
+          source: roles.dao._address,
+          owner: timelock.owner,
+          amount: timelock.amount,
+          releaseTime: timelock.releaseTime,
+        }
+      );
     }
   }
 
@@ -129,12 +134,17 @@ describe("TimelockManager", function () {
           timelock.amount,
           timelock.releaseTime
         );
-      await utils.verifyLog(timelockManager, tx, "TransferredAndLocked(address,address,uint256,uint256)", {
-        source: roles.dao._address,
-        owner: timelock.owner,
-        amount: timelock.amount,
-        releaseTime: timelock.releaseTime
-        });
+      await utils.verifyLog(
+        timelockManager,
+        tx,
+        "TransferredAndLocked(address,address,uint256,uint256)",
+        {
+          source: roles.dao._address,
+          owner: timelock.owner,
+          amount: timelock.amount,
+          releaseTime: timelock.releaseTime,
+        }
+      );
     }
     await verifyDeployedTimelocks();
   });
