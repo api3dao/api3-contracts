@@ -149,7 +149,7 @@ contract TimelockManager is Ownable, ITimelockManager {
         external
         override
     {
-        require(address(api3Pool) != address(0), "Pool not set yet");
+        require(address(api3Pool) != address(0), "API3 pool not set yet");
         require(
             address(api3Pool) == api3PoolAddress,
             "API3 pool addresses do not match"

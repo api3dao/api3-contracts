@@ -195,7 +195,7 @@ describe("TimelockManager", function () {
     ).to.be.revertedWith("Lengths of parameters do not match");
   });
 
-  it("Owners can withdraw their tokens after releaseTime", async function () {
+  it("Owners can withdraw their tokens after releaseTime only", async function () {
     await batchDeployTimelocks();
     const retrievedTimelocks = await timelockManager.getTimelocks();
     let indTimelock = retrievedTimelocks.owners.findIndex(
@@ -282,7 +282,7 @@ describe("TimelockManager", function () {
     ).to.be.revertedWith("Only the owner of the timelock can withdraw from it");
   });
 
-  it("Owner can withdraw their tokens to the pool", async function () {
+  it("Owner can withdraw their tokens to the pool only once", async function () {
     await batchDeployTimelocks();
     const retrievedTimelocks = await timelockManager.getTimelocks();
     let indTimelock = retrievedTimelocks.owners.findIndex(
@@ -318,8 +318,35 @@ describe("TimelockManager", function () {
     await expect(
       timelockManager
         .connect(roles.owner1)
-        .withdraw(indTimelock, roles.owner1._address)
+        .withdrawToPool(indTimelock, api3Pool.address, roles.owner1._address)
     ).to.be.revertedWith("Only the owner of the timelock can withdraw from it");
+  });
+
+  it("Owner cannot withdraw their tokens to the pool before it is set by the DAO", async function () {
+    await batchDeployTimelocks();
+    const retrievedTimelocks = await timelockManager.getTimelocks();
+    let indTimelock = retrievedTimelocks.owners.findIndex(
+      (owner) => owner == roles.owner1._address
+    );
+    await expect(
+      timelockManager
+        .connect(roles.owner1)
+        .withdrawToPool(indTimelock, api3Pool.address, roles.owner1._address)
+    ).to.be.revertedWith("API3 pool not set yet");
+  });
+
+  it("Owner cannot withdraw their tokens to the pool without providing the correct address", async function () {
+    await batchDeployTimelocks();
+    const retrievedTimelocks = await timelockManager.getTimelocks();
+    let indTimelock = retrievedTimelocks.owners.findIndex(
+      (owner) => owner == roles.owner1._address
+    );
+    await timelockManager.connect(roles.dao).updateApi3Pool(api3Pool.address);
+    await expect(
+      timelockManager
+        .connect(roles.owner1)
+        .withdrawToPool(indTimelock, ethers.constants.AddressZero, roles.owner1._address)
+    ).to.be.revertedWith("API3 pool addresses do not match");
   });
 
   it("Non-owner cannot withdraw tokens to the pool", async function () {
