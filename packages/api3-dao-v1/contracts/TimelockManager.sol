@@ -162,6 +162,8 @@ contract TimelockManager is Ownable, ITimelockManager {
         // We deliberately skip checking for timelock maturity
         delete timelocks[indTimelock];
         api3Token.approve(address(api3Pool), timelock.amount);
+        // If (now > timelock.releaseTime), the beneficiary can immediately
+        // have their tokens vested at the pool with an additional transaction
         api3Pool.depositWithVesting(
             address(this),
             timelock.amount,
@@ -170,7 +172,7 @@ contract TimelockManager is Ownable, ITimelockManager {
             );
     }
 
-    /// @notice Returns details of all timelocks
+    /// @notice Returns the details of all timelocks
     /// @return owners Owners of tokens
     /// @return amounts Amounts of tokens
     /// @return releaseTimes Release times
