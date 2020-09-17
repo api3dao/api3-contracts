@@ -6,8 +6,9 @@ interface ITimelockManager {
     event Api3PoolUpdated(address api3PoolAddress);
 
     event TransferredAndLocked(
+        uint256 indexed timelockInd,
         address source,
-        address owner,
+        address indexed owner,
         uint256 amount,
         uint256 releaseTime
     );

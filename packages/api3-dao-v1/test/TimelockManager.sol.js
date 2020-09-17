@@ -25,7 +25,7 @@ describe("TimelockManager", function () {
       await utils.verifyLog(
         timelockManager,
         tx,
-        "TransferredAndLocked(address,address,uint256,uint256)",
+        "TransferredAndLocked(uint256,address,address,uint256,uint256)",
         {
           source: roles.dao._address,
           owner: timelock.owner,
@@ -137,7 +137,7 @@ describe("TimelockManager", function () {
       await utils.verifyLog(
         timelockManager,
         tx,
-        "TransferredAndLocked(address,address,uint256,uint256)",
+        "TransferredAndLocked(uint256,address,address,uint256,uint256)",
         {
           source: roles.dao._address,
           owner: timelock.owner,

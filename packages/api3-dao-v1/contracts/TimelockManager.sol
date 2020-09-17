@@ -82,13 +82,14 @@ contract TimelockManager is Ownable, ITimelockManager {
             amount: amount,
             releaseTime: releaseTime
             });
-        noTimelocks = noTimelocks.add(1);
         emit TransferredAndLocked(
+            noTimelocks,
             source,
             owner,
             amount,
             releaseTime
             );
+        noTimelocks = noTimelocks.add(1);
         api3Token.transferFrom(source, address(this), amount);
     }
 
