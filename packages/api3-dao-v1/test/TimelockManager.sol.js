@@ -210,7 +210,7 @@ describe("TimelockManager", function () {
         ethers.utils.parseEther((1e3).toString())
       );
     await expect(
-      timelockManager.connect(roles.randomPerson).transferAndLockMultiple(
+      timelockManager.connect(roles.dao).transferAndLockMultiple(
         roles.dao._address,
         [timelocks[0].owner],
         timelocks.map((timelock) => timelock.amount),
