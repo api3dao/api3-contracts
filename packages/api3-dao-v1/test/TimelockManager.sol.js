@@ -37,7 +37,7 @@ describe("TimelockManager", function () {
       expect(retrievedTimelocks.releaseTimes[indTimelock]).to.equal(
         timelock.releaseTime
       );
-      const individuallyRetrievedTimelock = await timelockManager.timelocks(
+      const individuallyRetrievedTimelock = await timelockManager.getTimelock(
         indTimelock
       );
       expect(individuallyRetrievedTimelock.owner).to.equal(timelock.owner);
@@ -237,7 +237,7 @@ describe("TimelockManager", function () {
       .connect(roles.owner1)
       .withdraw(indTimelock, roles.owner1._address);
 
-    const individuallyRetrievedTimelock = await timelockManager.timelocks(
+    const individuallyRetrievedTimelock = await timelockManager.getTimelock(
       indTimelock
     );
     expect(individuallyRetrievedTimelock.owner).to.equal(
@@ -306,7 +306,7 @@ describe("TimelockManager", function () {
       }
     );
 
-    const individuallyRetrievedTimelock = await timelockManager.timelocks(
+    const individuallyRetrievedTimelock = await timelockManager.getTimelock(
       indTimelock
     );
     expect(individuallyRetrievedTimelock.owner).to.equal(

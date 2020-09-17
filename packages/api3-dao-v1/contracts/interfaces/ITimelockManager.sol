@@ -37,6 +37,15 @@ interface ITimelockManager {
         )
         external;
 
+    function getTimelock(uint256 indTimelock)
+        external
+        view
+        returns (
+            address owner,
+            uint256 amount,
+            uint256 releaseTime
+            );
+
     function getTimelocks()
         external
         view

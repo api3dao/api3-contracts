@@ -28,7 +28,8 @@ contract TimelockManager is Ownable, ITimelockManager {
 
     IApi3Token public immutable api3Token;
     IApi3Pool public api3Pool;
-    Timelock[] public timelocks;
+    mapping(uint256 => Timelock) public timelocks;
+    uint256 public noTimelocks = 0;
 
     /// @param api3TokenAddress Address of the API3 token contract
     /// @param timelockManagerOwner Address that will receive the ownership of
@@ -76,11 +77,12 @@ contract TimelockManager is Ownable, ITimelockManager {
         override
         onlyOwner
     {
-        timelocks.push(Timelock({
+        timelocks[noTimelocks] = Timelock({
             owner: owner,
             amount: amount,
             releaseTime: releaseTime
-            }));
+            });
+        noTimelocks = noTimelocks.add(1);
         api3Token.transferFrom(source, address(this), amount);
     }
 
@@ -172,6 +174,26 @@ contract TimelockManager is Ownable, ITimelockManager {
             );
     }
 
+    /// @notice Returns the details of a timelock
+    /// @return owner Owner of tokens
+    /// @return amount Amount of tokens
+    /// @return releaseTime Release time
+    function getTimelock(uint256 indTimelock)
+        external
+        view
+        override
+        returns (
+            address owner,
+            uint256 amount,
+            uint256 releaseTime
+            )
+    {
+        Timelock storage timelock = timelocks[indTimelock];
+        owner = timelock.owner;
+        amount = timelock.amount;
+        releaseTime = timelock.releaseTime;
+    }
+
     /// @notice Returns the details of all timelocks
     /// @return owners Owners of tokens
     /// @return amounts Amounts of tokens
@@ -186,12 +208,12 @@ contract TimelockManager is Ownable, ITimelockManager {
             uint256[] memory releaseTimes
             )
     {
-        owners = new address[](timelocks.length);
-        amounts = new uint256[](timelocks.length);
-        releaseTimes = new uint256[](timelocks.length);
-        for (uint256 ind = 0; ind < timelocks.length; ind++)
+        owners = new address[](noTimelocks);
+        amounts = new uint256[](noTimelocks);
+        releaseTimes = new uint256[](noTimelocks);
+        for (uint256 ind = 0; ind < noTimelocks; ind++)
         {
-            Timelock memory timelock = timelocks[ind];
+            Timelock storage timelock = timelocks[ind];
             owners[ind] = timelock.owner;
             amounts[ind] = timelock.amount;
             releaseTimes[ind] = timelock.releaseTime;
