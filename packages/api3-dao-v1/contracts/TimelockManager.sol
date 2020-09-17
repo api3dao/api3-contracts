@@ -111,6 +111,11 @@ contract TimelockManager is Ownable, ITimelockManager {
             owners.length == amounts.length && owners.length == releaseTimes.length,
             "Lengths of parameters do not match"
             );
+        // 36 elements cost slightly less than 3,000,000 in gas
+        require(
+            owners.length <= 36,
+            "Parameters are longer than 36"
+            );
         for (uint256 ind = 0; ind < owners.length; ind++)
         {
             transferAndLock(source, owners[ind], amounts[ind], releaseTimes[ind]);
