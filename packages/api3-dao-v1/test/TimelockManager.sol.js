@@ -88,7 +88,7 @@ beforeEach(async () => {
       owner: roles.owner1._address,
       amount: ethers.utils.parseEther((5e2).toString()),
       releaseTime: ethers.BigNumber.from(currentTimestamp + 40000),
-    }
+    },
   ];
   ({ api3Token, timelockManager, api3Pool } = await deployer.deployAll(
     roles.deployer,
@@ -234,6 +234,24 @@ describe("transferAndLockMultiple", function () {
         timelocks.map((timelock) => timelock.releaseTime)
       )
     ).to.be.revertedWith("Lengths of parameters do not match");
+  });
+
+  it("Batch transfer and lock rejects parameters longer than 36", async function () {
+    await api3Token.connect(roles.dao).approve(
+      timelockManager.address,
+      timelocks.reduce(
+        (acc, timelock) => acc.add(timelock.amount),
+        ethers.BigNumber.from(0)
+      )
+    );
+    await expect(
+      timelockManager.connect(roles.dao).transferAndLockMultiple(
+        roles.dao._address,
+        Array(37).fill(timelocks[0].owner),
+        Array(37).fill(timelocks[0].amount),
+        Array(37).fill(timelocks[0].releaseTime)
+      )
+    ).to.be.revertedWith("Parameters are longer than 36");
   });
 });
 
