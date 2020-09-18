@@ -8,12 +8,13 @@ let roles;
 let timelocks;
 
 async function batchDeployTimelocks() {
-  await api3Token
-    .connect(roles.dao)
-    .approve(
-      timelockManager.address,
-      timelocks.reduce((acc, timelock) => acc.add(timelock.amount), ethers.BigNumber.from(0))
-    );
+  await api3Token.connect(roles.dao).approve(
+    timelockManager.address,
+    timelocks.reduce(
+      (acc, timelock) => acc.add(timelock.amount),
+      ethers.BigNumber.from(0)
+    )
+  );
   let tx = await timelockManager.connect(roles.dao).transferAndLockMultiple(
     roles.dao._address,
     timelocks.map((timelock) => timelock.owner),
@@ -42,13 +43,12 @@ async function verifyDeployedTimelocks() {
   expect(retrievedTimelocks.releaseTimes.length).to.equal(timelocks.length);
   for (const timelock of timelocks) {
     const indTimelock = retrievedTimelocks.owners.findIndex(
-      (owner) => owner == timelock.owner
+      (owner, ind) =>
+        owner == timelock.owner &&
+        retrievedTimelocks.amounts[ind].eq(timelock.amount) &&
+        retrievedTimelocks.releaseTimes[ind].eq(timelock.releaseTime)
     );
-    expect(retrievedTimelocks.owners[indTimelock]).to.equal(timelock.owner);
-    expect(retrievedTimelocks.amounts[indTimelock]).to.equal(timelock.amount);
-    expect(retrievedTimelocks.releaseTimes[indTimelock]).to.equal(
-      timelock.releaseTime
-    );
+    expect(indTimelock).to.not.equal(-1);
     const individuallyRetrievedTimelock = await timelockManager.getTimelock(
       indTimelock
     );
@@ -77,13 +77,18 @@ beforeEach(async () => {
     {
       owner: roles.owner1._address,
       amount: ethers.utils.parseEther((2e2).toString()),
-      releaseTime: currentTimestamp + 10000,
+      releaseTime: ethers.BigNumber.from(currentTimestamp + 10000),
     },
     {
       owner: roles.owner2._address,
       amount: ethers.utils.parseEther((8e2).toString()),
-      releaseTime: currentTimestamp + 20000,
+      releaseTime: ethers.BigNumber.from(currentTimestamp + 20000),
     },
+    {
+      owner: roles.owner1._address,
+      amount: ethers.utils.parseEther((5e2).toString()),
+      releaseTime: ethers.BigNumber.from(currentTimestamp + 40000),
+    }
   ];
   ({ api3Token, timelockManager, api3Pool } = await deployer.deployAll(
     roles.deployer,
@@ -123,12 +128,13 @@ describe("updateApi3Pool", function () {
 
 describe("transferAndLock", function () {
   it("DAO can transfer and lock tokens individually", async function () {
-    await api3Token
-      .connect(roles.dao)
-      .approve(
-        timelockManager.address,
-        timelocks.reduce((acc, timelock) => acc.add(timelock.amount), ethers.BigNumber.from(0))
-      );
+    await api3Token.connect(roles.dao).approve(
+      timelockManager.address,
+      timelocks.reduce(
+        (acc, timelock) => acc.add(timelock.amount),
+        ethers.BigNumber.from(0)
+      )
+    );
     for (const timelock of timelocks) {
       let tx = await timelockManager
         .connect(roles.dao)
@@ -154,18 +160,20 @@ describe("transferAndLock", function () {
   });
 
   it("Non-DAO accounts cannot transfer and lock tokens individually", async function () {
-    await api3Token
-      .connect(roles.dao)
-      .transfer(
-        roles.randomPerson._address,
-        timelocks.reduce((acc, timelock) => acc.add(timelock.amount), ethers.BigNumber.from(0))
-      );
-    await api3Token
-      .connect(roles.randomPerson)
-      .approve(
-        timelockManager.address,
-        timelocks.reduce((acc, timelock) => acc.add(timelock.amount), ethers.BigNumber.from(0))
-      );
+    await api3Token.connect(roles.dao).transfer(
+      roles.randomPerson._address,
+      timelocks.reduce(
+        (acc, timelock) => acc.add(timelock.amount),
+        ethers.BigNumber.from(0)
+      )
+    );
+    await api3Token.connect(roles.randomPerson).approve(
+      timelockManager.address,
+      timelocks.reduce(
+        (acc, timelock) => acc.add(timelock.amount),
+        ethers.BigNumber.from(0)
+      )
+    );
     await expect(
       timelockManager
         .connect(roles.randomPerson)
@@ -186,18 +194,20 @@ describe("transferAndLockMultiple", function () {
   });
 
   it("Non-DAO accounts cannot batch transfer and lock tokens", async function () {
-    await api3Token
-      .connect(roles.dao)
-      .transfer(
-        roles.randomPerson._address,
-        timelocks.reduce((acc, timelock) => acc.add(timelock.amount), ethers.BigNumber.from(0))
-      );
-    await api3Token
-      .connect(roles.randomPerson)
-      .approve(
-        timelockManager.address,
-        timelocks.reduce((acc, timelock) => acc.add(timelock.amount), ethers.BigNumber.from(0))
-      );
+    await api3Token.connect(roles.dao).transfer(
+      roles.randomPerson._address,
+      timelocks.reduce(
+        (acc, timelock) => acc.add(timelock.amount),
+        ethers.BigNumber.from(0)
+      )
+    );
+    await api3Token.connect(roles.randomPerson).approve(
+      timelockManager.address,
+      timelocks.reduce(
+        (acc, timelock) => acc.add(timelock.amount),
+        ethers.BigNumber.from(0)
+      )
+    );
     await expect(
       timelockManager.connect(roles.randomPerson).transferAndLockMultiple(
         roles.dao._address,
@@ -209,12 +219,13 @@ describe("transferAndLockMultiple", function () {
   });
 
   it("Batch transfer and lock rejects parameters of unequal length", async function () {
-    await api3Token
-      .connect(roles.dao)
-      .approve(
-        timelockManager.address,
-        timelocks.reduce((acc, timelock) => acc.add(timelock.amount), ethers.BigNumber.from(0))
-      );
+    await api3Token.connect(roles.dao).approve(
+      timelockManager.address,
+      timelocks.reduce(
+        (acc, timelock) => acc.add(timelock.amount),
+        ethers.BigNumber.from(0)
+      )
+    );
     await expect(
       timelockManager.connect(roles.dao).transferAndLockMultiple(
         roles.dao._address,
