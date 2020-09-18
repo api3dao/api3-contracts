@@ -1,97 +1,97 @@
 const { expect } = require("chai");
 const { deployer, utils } = require("@api3-contracts/helpers");
 
-describe("TimelockManager", function () {
-  let api3Token;
-  let timelockManager;
-  let api3Pool;
-  let roles;
-  let timelocks;
+let api3Token;
+let timelockManager;
+let api3Pool;
+let roles;
+let timelocks;
 
-  async function batchDeployTimelocks() {
-    await api3Token
-      .connect(roles.dao)
-      .approve(
-        timelockManager.address,
-        ethers.utils.parseEther((1e3).toString())
-      );
-    let tx = await timelockManager.connect(roles.dao).transferAndLockMultiple(
-      roles.dao._address,
-      timelocks.map((timelock) => timelock.owner),
-      timelocks.map((timelock) => timelock.amount),
-      timelocks.map((timelock) => timelock.releaseTime)
+async function batchDeployTimelocks() {
+  await api3Token
+    .connect(roles.dao)
+    .approve(
+      timelockManager.address,
+      ethers.utils.parseEther((1e3).toString())
     );
-    for (const timelock of timelocks) {
-      await utils.verifyLog(
-        timelockManager,
-        tx,
-        "TransferredAndLocked(uint256,address,address,uint256,uint256)",
-        {
-          source: roles.dao._address,
-          owner: timelock.owner,
-          amount: timelock.amount,
-          releaseTime: timelock.releaseTime,
-        }
-      );
-    }
-  }
-
-  async function verifyDeployedTimelocks() {
-    const retrievedTimelocks = await timelockManager.getTimelocks();
-    expect(retrievedTimelocks.owners.length).to.equal(timelocks.length);
-    expect(retrievedTimelocks.amounts.length).to.equal(timelocks.length);
-    expect(retrievedTimelocks.releaseTimes.length).to.equal(timelocks.length);
-    for (const timelock of timelocks) {
-      const indTimelock = retrievedTimelocks.owners.findIndex(
-        (owner) => owner == timelock.owner
-      );
-      expect(retrievedTimelocks.owners[indTimelock]).to.equal(timelock.owner);
-      expect(retrievedTimelocks.amounts[indTimelock]).to.equal(timelock.amount);
-      expect(retrievedTimelocks.releaseTimes[indTimelock]).to.equal(
-        timelock.releaseTime
-      );
-      const individuallyRetrievedTimelock = await timelockManager.getTimelock(
-        indTimelock
-      );
-      expect(individuallyRetrievedTimelock.owner).to.equal(timelock.owner);
-      expect(individuallyRetrievedTimelock.amount).to.equal(timelock.amount);
-      expect(individuallyRetrievedTimelock.releaseTime).to.equal(
-        timelock.releaseTime
-      );
-    }
-  }
-
-  beforeEach(async () => {
-    const accounts = await ethers.getSigners();
-    roles = {
-      deployer: accounts[0],
-      dao: accounts[1],
-      owner1: accounts[2],
-      owner2: accounts[3],
-      randomPerson: accounts[9],
-    };
-    const currentTimestamp = parseInt(
-      (await ethers.provider.send("eth_getBlockByNumber", ["latest", false]))
-        .timestamp
+  let tx = await timelockManager.connect(roles.dao).transferAndLockMultiple(
+    roles.dao._address,
+    timelocks.map((timelock) => timelock.owner),
+    timelocks.map((timelock) => timelock.amount),
+    timelocks.map((timelock) => timelock.releaseTime)
+  );
+  for (const timelock of timelocks) {
+    await utils.verifyLog(
+      timelockManager,
+      tx,
+      "TransferredAndLocked(uint256,address,address,uint256,uint256)",
+      {
+        source: roles.dao._address,
+        owner: timelock.owner,
+        amount: timelock.amount,
+        releaseTime: timelock.releaseTime,
+      }
     );
-    timelocks = [
-      {
-        owner: roles.owner1._address,
-        amount: ethers.utils.parseEther((2e2).toString()),
-        releaseTime: currentTimestamp + 10000,
-      },
-      {
-        owner: roles.owner2._address,
-        amount: ethers.utils.parseEther((8e2).toString()),
-        releaseTime: currentTimestamp + 20000,
-      },
-    ];
-    ({ api3Token, timelockManager, api3Pool } = await deployer.deployAll(
-      roles.deployer,
-      roles.dao._address
-    ));
-  });
+  }
+}
 
+async function verifyDeployedTimelocks() {
+  const retrievedTimelocks = await timelockManager.getTimelocks();
+  expect(retrievedTimelocks.owners.length).to.equal(timelocks.length);
+  expect(retrievedTimelocks.amounts.length).to.equal(timelocks.length);
+  expect(retrievedTimelocks.releaseTimes.length).to.equal(timelocks.length);
+  for (const timelock of timelocks) {
+    const indTimelock = retrievedTimelocks.owners.findIndex(
+      (owner) => owner == timelock.owner
+    );
+    expect(retrievedTimelocks.owners[indTimelock]).to.equal(timelock.owner);
+    expect(retrievedTimelocks.amounts[indTimelock]).to.equal(timelock.amount);
+    expect(retrievedTimelocks.releaseTimes[indTimelock]).to.equal(
+      timelock.releaseTime
+    );
+    const individuallyRetrievedTimelock = await timelockManager.getTimelock(
+      indTimelock
+    );
+    expect(individuallyRetrievedTimelock.owner).to.equal(timelock.owner);
+    expect(individuallyRetrievedTimelock.amount).to.equal(timelock.amount);
+    expect(individuallyRetrievedTimelock.releaseTime).to.equal(
+      timelock.releaseTime
+    );
+  }
+}
+
+beforeEach(async () => {
+  const accounts = await ethers.getSigners();
+  roles = {
+    deployer: accounts[0],
+    dao: accounts[1],
+    owner1: accounts[2],
+    owner2: accounts[3],
+    randomPerson: accounts[9],
+  };
+  const currentTimestamp = parseInt(
+    (await ethers.provider.send("eth_getBlockByNumber", ["latest", false]))
+      .timestamp
+  );
+  timelocks = [
+    {
+      owner: roles.owner1._address,
+      amount: ethers.utils.parseEther((2e2).toString()),
+      releaseTime: currentTimestamp + 10000,
+    },
+    {
+      owner: roles.owner2._address,
+      amount: ethers.utils.parseEther((8e2).toString()),
+      releaseTime: currentTimestamp + 20000,
+    },
+  ];
+  ({ api3Token, timelockManager, api3Pool } = await deployer.deployAll(
+    roles.deployer,
+    roles.dao._address
+  ));
+});
+
+describe("constructor", function () {
   it("Token address, pool address and ownership are set correctly at deployment", async function () {
     expect(await timelockManager.api3Token()).to.equal(api3Token.address);
     expect(await timelockManager.owner()).to.equal(roles.dao._address);
@@ -99,7 +99,9 @@ describe("TimelockManager", function () {
       ethers.constants.AddressZero
     );
   });
+});
 
+describe("updateApi3Pool", function () {
   it("DAO can update the pool address", async function () {
     const newPoolAddress = "0x0000000000000000000000000000000000000001";
     let tx = await timelockManager
@@ -117,7 +119,9 @@ describe("TimelockManager", function () {
       timelockManager.connect(roles.randomPerson).updateApi3Pool(newPoolAddress)
     ).to.be.revertedWith("Ownable: caller is not the owner");
   });
+});
 
+describe("transferAndLock", function () {
   it("DAO can transfer and lock tokens individually", async function () {
     await api3Token
       .connect(roles.dao)
@@ -149,11 +153,6 @@ describe("TimelockManager", function () {
     await verifyDeployedTimelocks();
   });
 
-  it("DAO can batch transfer and lock tokens", async function () {
-    await batchDeployTimelocks();
-    await verifyDeployedTimelocks();
-  });
-
   it("Non-DAO accounts cannot transfer and lock tokens individually", async function () {
     await api3Token
       .connect(roles.dao)
@@ -177,6 +176,13 @@ describe("TimelockManager", function () {
           timelocks[0].releaseTime
         )
     ).to.be.revertedWith("Ownable: caller is not the owner");
+  });
+});
+
+describe("transferAndLockMultiple", function () {
+  it("DAO can batch transfer and lock tokens", async function () {
+    await batchDeployTimelocks();
+    await verifyDeployedTimelocks();
   });
 
   it("Non-DAO accounts cannot batch transfer and lock tokens", async function () {
@@ -218,7 +224,9 @@ describe("TimelockManager", function () {
       )
     ).to.be.revertedWith("Lengths of parameters do not match");
   });
+});
 
+describe("withdraw", function () {
   it("Owners can withdraw their tokens after releaseTime only", async function () {
     await batchDeployTimelocks();
     const retrievedTimelocks = await timelockManager.getTimelocks();
@@ -305,7 +313,9 @@ describe("TimelockManager", function () {
         .withdraw(indTimelock, roles.randomPerson._address)
     ).to.be.revertedWith("Only the owner of the timelock can withdraw from it");
   });
+});
 
+describe("withdrawToPool", function () {
   it("Owner can withdraw their tokens to the pool only once", async function () {
     await batchDeployTimelocks();
     const retrievedTimelocks = await timelockManager.getTimelocks();
