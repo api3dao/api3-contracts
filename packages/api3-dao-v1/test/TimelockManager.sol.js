@@ -245,12 +245,14 @@ describe("transferAndLockMultiple", function () {
       )
     );
     await expect(
-      timelockManager.connect(roles.dao).transferAndLockMultiple(
-        roles.dao._address,
-        Array(37).fill(timelocks[0].owner),
-        Array(37).fill(timelocks[0].amount),
-        Array(37).fill(timelocks[0].releaseTime)
-      )
+      timelockManager
+        .connect(roles.dao)
+        .transferAndLockMultiple(
+          roles.dao._address,
+          Array(37).fill(timelocks[0].owner),
+          Array(37).fill(timelocks[0].amount),
+          Array(37).fill(timelocks[0].releaseTime)
+        )
     ).to.be.revertedWith("Parameters are longer than 36");
   });
 });
