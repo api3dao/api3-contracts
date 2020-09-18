@@ -12,7 +12,7 @@ async function batchDeployTimelocks() {
     .connect(roles.dao)
     .approve(
       timelockManager.address,
-      ethers.utils.parseEther((1e3).toString())
+      timelocks.reduce((acc, timelock) => acc.add(timelock.amount), ethers.BigNumber.from(0))
     );
   let tx = await timelockManager.connect(roles.dao).transferAndLockMultiple(
     roles.dao._address,
@@ -127,7 +127,7 @@ describe("transferAndLock", function () {
       .connect(roles.dao)
       .approve(
         timelockManager.address,
-        ethers.utils.parseEther((1e3).toString())
+        timelocks.reduce((acc, timelock) => acc.add(timelock.amount), ethers.BigNumber.from(0))
       );
     for (const timelock of timelocks) {
       let tx = await timelockManager
@@ -158,13 +158,13 @@ describe("transferAndLock", function () {
       .connect(roles.dao)
       .transfer(
         roles.randomPerson._address,
-        ethers.utils.parseEther((1e3).toString())
+        timelocks.reduce((acc, timelock) => acc.add(timelock.amount), ethers.BigNumber.from(0))
       );
     await api3Token
       .connect(roles.randomPerson)
       .approve(
         timelockManager.address,
-        ethers.utils.parseEther((1e3).toString())
+        timelocks.reduce((acc, timelock) => acc.add(timelock.amount), ethers.BigNumber.from(0))
       );
     await expect(
       timelockManager
@@ -190,13 +190,13 @@ describe("transferAndLockMultiple", function () {
       .connect(roles.dao)
       .transfer(
         roles.randomPerson._address,
-        ethers.utils.parseEther((1e3).toString())
+        timelocks.reduce((acc, timelock) => acc.add(timelock.amount), ethers.BigNumber.from(0))
       );
     await api3Token
       .connect(roles.randomPerson)
       .approve(
         timelockManager.address,
-        ethers.utils.parseEther((1e3).toString())
+        timelocks.reduce((acc, timelock) => acc.add(timelock.amount), ethers.BigNumber.from(0))
       );
     await expect(
       timelockManager.connect(roles.randomPerson).transferAndLockMultiple(
@@ -213,7 +213,7 @@ describe("transferAndLockMultiple", function () {
       .connect(roles.dao)
       .approve(
         timelockManager.address,
-        ethers.utils.parseEther((1e3).toString())
+        timelocks.reduce((acc, timelock) => acc.add(timelock.amount), ethers.BigNumber.from(0))
       );
     await expect(
       timelockManager.connect(roles.dao).transferAndLockMultiple(
