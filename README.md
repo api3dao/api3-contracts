@@ -6,10 +6,10 @@
   <img src="https://user-images.githubusercontent.com/19530665/93248938-3afdf400-f799-11ea-8aea-243f05ce2af3.png" />
 </p>
 
-## Instructions
+## Build Instructions
 
 Run at the root directory:
 ```
 npm run bootstrap
-npm run test
+npm run build
 ```

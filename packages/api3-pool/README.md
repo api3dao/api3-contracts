@@ -2,6 +2,9 @@
 
 > API3 Pool Contract
 
+See the [build instructions](/README.md#build-instructions).
+
+
 ## Terminology
 
 **Epoch:**
