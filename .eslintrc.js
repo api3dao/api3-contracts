@@ -7,7 +7,8 @@ module.exports = {
       "beforeEach": false,
       "describe": false,
       "ethers": false,
-      "it": false
+      "it": false,
+      "context": false
     },
     "parserOptions": {
         "ecmaVersion": 11,

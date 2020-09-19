@@ -143,7 +143,7 @@ contract TimelockManager is Ownable, ITimelockManager {
             );
         require(
             destination != address(0),
-            "Cannot withdraw to address(0)"
+            "Cannot withdraw to address 0"
             );
         Timelock memory timelock = timelocks[indTimelock];
         require(
@@ -181,7 +181,7 @@ contract TimelockManager is Ownable, ITimelockManager {
             );
         require(
             beneficiary != address(0),
-            "Cannot withdraw to benefit address(0)"
+            "Cannot withdraw to benefit address 0"
             );
         require(address(api3Pool) != address(0), "API3 pool not set yet");
         require(
