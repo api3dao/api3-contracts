@@ -33,10 +33,15 @@ describe("updateMinterStatus", function () {
       let tx = await api3Token
         .connect(roles.dao)
         .updateMinterStatus(roles.minter._address, true);
-      await utils.verifyLog(api3Token, tx, "MinterStatusUpdated(address,bool)", {
-        minterAddress: roles.minter._address,
-        minterStatus: true,
-      });
+      await utils.verifyLog(
+        api3Token,
+        tx,
+        "MinterStatusUpdated(address,bool)",
+        {
+          minterAddress: roles.minter._address,
+          minterStatus: true,
+        }
+      );
       let minterMinterStatus = await api3Token.getMinterStatus(
         roles.minter._address
       );
@@ -57,27 +62,37 @@ describe("updateMinterStatus", function () {
       tx = await api3Token
         .connect(roles.dao)
         .updateMinterStatus(roles.minter._address, false);
-      await utils.verifyLog(api3Token, tx, "MinterStatusUpdated(address,bool)", {
-        minterAddress: roles.minter._address,
-        minterStatus: false,
-      });
-      minterMinterStatus = await api3Token.getMinterStatus(roles.minter._address);
+      await utils.verifyLog(
+        api3Token,
+        tx,
+        "MinterStatusUpdated(address,bool)",
+        {
+          minterAddress: roles.minter._address,
+          minterStatus: false,
+        }
+      );
+      minterMinterStatus = await api3Token.getMinterStatus(
+        roles.minter._address
+      );
       expect(minterMinterStatus).to.equal(false);
       // Attempt to mint
       await expect(
         api3Token
           .connect(roles.minter)
-          .mint(roles.minter._address, ethers.utils.parseEther((1e8).toString()))
+          .mint(
+            roles.minter._address,
+            ethers.utils.parseEther((1e8).toString())
+          )
       ).to.be.revertedWith("Only minters are allowed to mint");
     });
   });
   context("If the caller is not the DAO", async function () {
     it("reverts", async function () {
-    await expect(
-    api3Token
-        .connect(roles.randomPerson)
-        .updateMinterStatus(roles.minter._address, true)
-        ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(
+        api3Token
+          .connect(roles.randomPerson)
+          .updateMinterStatus(roles.minter._address, true)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 });
