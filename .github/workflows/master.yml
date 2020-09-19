@@ -1,0 +1,30 @@
+name: Lint and test @api3-contracts packages
+
+on: push
+
+jobs:
+  build:
+    name: Run Linting and Tests
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Clone airnode
+      uses: actions/checkout@v2
+
+    - name: Setup Node
+      uses: actions/setup-node@v1
+      with:
+        node-version: '12.x'
+
+    - name: Install Dependencies
+      run: npm run bootstrap
+
+    - name: Lint code
+      run: npm run lint
+
+    - name: Build
+      run: npm run build
+
+    - name: Test packages
+      run: npm run test
