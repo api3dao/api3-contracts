@@ -31,6 +31,8 @@ contract TimelockManager is Ownable, ITimelockManager {
     mapping(uint256 => Timelock) public timelocks;
     uint256 public noTimelocks = 0;
 
+    /// @dev api3Pool is not initialized in the constructor because this
+    /// contract will be deployed before api3Pool
     /// @param api3TokenAddress Address of the API3 token contract
     /// @param timelockManagerOwner Address that will receive the ownership of
     /// the TimelockManager contract (i.e., the API3 DAO)
@@ -94,6 +96,7 @@ contract TimelockManager is Ownable, ITimelockManager {
     }
 
     /// @notice Convenience function that calls transferAndLock() multiple times
+    /// @dev source is expected to be a single address, i.e., the DAO
     /// @param source Source of tokens
     /// @param owners Array of owners of tokens
     /// @param amounts Array of amounts of tokens
@@ -224,6 +227,12 @@ contract TimelockManager is Ownable, ITimelockManager {
     }
 
     /// @notice Returns the details of all timelocks
+    /// @dev This is a convenience method for the user to be able to retrieve
+    /// all timelocks with a single call and loop through them to find the
+    /// timelocks they are looking for. In case timelocks grow too large and
+    /// this method starts reverting (not expected), the user can go through
+    /// the events emitted during locking, or even go through individual
+    /// indices using getTimelock().
     /// @return owners Owners of tokens
     /// @return amounts Amounts of tokens
     /// @return releaseTimes Release times
