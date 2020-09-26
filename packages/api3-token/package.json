@@ -5,7 +5,8 @@
     "build": "buidler compile",
     "deploy-mainnet": "buidler run --network mainnet scripts/deploy.js",
     "deploy-rinkeby": "buidler run --network rinkeby scripts/deploy.js",
-    "flatten": "truffle-flattener ./contracts/Api3Token.sol > FlatApi3Token.sol",
+    "flatten": "truffle-flattener ./contracts/Api3Token.sol > Api3Token.flat.sol && npm run flatten:delete-license-lines",
+    "flatten:delete-license-lines": "sed --in-place '/SPDX-License-Identifier/d' Api3Token.flat.sol",
     "test": "buidler test"
   },
   "devDependencies": {

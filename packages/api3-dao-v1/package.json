@@ -7,18 +7,21 @@
     "build": "buidler compile && npm run copy-artifacts:api3-token && npm run copy-artifacts:api3-pool",
     "deploy-mainnet": "buidler run --network mainnet scripts/deploy.js",
     "deploy-rinkeby": "buidler run --network rinkeby scripts/deploy.js",
+    "flatten": "truffle-flattener ./contracts/TimelockManager.sol > TimelockManager.flat.sol && npm run flatten:delete-license-lines",
+    "flatten:delete-license-lines": "sed --in-place '/SPDX-License-Identifier/d' TimelockManager.flat.sol",
     "test": "buidler test"
   },
   "devDependencies": {
-    "@api3-contracts/helpers": "^0.1.0",
-    "@api3-contracts/api3-token": "^0.1.0",
     "@api3-contracts/api3-pool": "^0.1.0",
+    "@api3-contracts/api3-token": "^0.1.0",
+    "@api3-contracts/helpers": "^0.1.0",
     "@nomiclabs/buidler": "^1.4.2",
     "@nomiclabs/buidler-ethers": "^2.0.0",
     "@nomiclabs/buidler-waffle": "^2.0.0",
     "@openzeppelin/contracts": "^3.1.0",
     "chai": "^4.2.0",
     "ethereum-waffle": "^3.0.2",
-    "ethers": "^5.0.7"
+    "ethers": "^5.0.7",
+    "truffle-flattener": "^1.5.0"
   }
 }
