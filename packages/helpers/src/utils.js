@@ -1,5 +1,8 @@
 /* global waffle */
-const { expect } = require("chai");
+const { expect, use } = require("chai");
+const { solidity } = require("ethereum-waffle");
+
+use(solidity);
 
 async function getParsedLogs(contract, tx) {
   const logs = (
