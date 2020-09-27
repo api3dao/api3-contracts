@@ -7,27 +7,28 @@ import "./interfaces/IApi3Token.sol";
 
 
 /// @title API3 token contract
-/// @notice The API3 token is owned by the API3 DAO, which can grant minting
-/// privileges to addresses. For example, the DAO authorizes InflationManager
-/// as a minter, which allows it to mint tokens each epoch according to its
-/// immutable schedule.
+/// @notice The API3 token contract is owned by the API3 DAO, which can grant
+/// minting privileges to addresses
 contract Api3Token is ERC20, Ownable, IApi3Token {
-    /// @dev Mapping of addresses to if they are authorized to mint tokens
+    /// @dev If an address is authorized to mint tokens
     mapping(address => bool) private isMinter;
 
-    /// @param tokenOwner Account that will receive the entire token supply and
-    /// the ownership of the token (i.e., the API3 DAO)
-    constructor(address tokenOwner)
+    /// @param contractOwner Address that will receive the ownership of the
+    /// token contract
+    /// @param mintDestination Adress that will receive the minted tokens
+    constructor(
+        address contractOwner,
+        address mintDestination
+        )
         ERC20("API3", "API3")
         public
         {
             // Initial supply is 100 million (1e8)
-            _mint(tokenOwner, 1e8 * 1e18);
-            transferOwnership(tokenOwner);
+            _mint(mintDestination, 1e8 * 1e18);
+            transferOwnership(contractOwner);
         }
 
     /// @notice Updates if an address is authorized to mint tokens
-    /// @dev Can only be called by the owner (i.e., the API3 DAO)
     /// @param minterAddress Address whose minter authorization status will be
     /// updated
     /// @param minterStatus Updated minter authorization status
@@ -44,7 +45,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
     }
 
     /// @notice Mints tokens
-    /// @param account Account that will receive the minted tokens
+    /// @param account Address that will receive the minted tokens
     /// @param amount Amount that will be minted
     function mint(
         address account,
@@ -59,7 +60,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
 
     /// @notice Returns if an address is authorized to mint tokens
     /// @param minterAddress Address whose minter authorization status will be
-    /// gotten
+    /// returned
     /// @return minterStatus Minter authorization status
     function getMinterStatus(address minterAddress)
         external

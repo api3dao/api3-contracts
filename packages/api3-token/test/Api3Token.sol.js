@@ -1,5 +1,5 @@
 const { expect } = require("chai");
-const { deployer, utils } = require("@api3-contracts/helpers");
+const { deployer } = require("@api3-contracts/helpers");
 
 let api3Token;
 let roles;
@@ -9,43 +9,44 @@ beforeEach(async () => {
   roles = {
     deployer: accounts[0],
     dao: accounts[1],
-    minter: accounts[2],
+    daoBank: accounts[2],
+    minter: accounts[3],
     randomPerson: accounts[9],
   };
-  api3Token = await deployer.deployToken(roles.deployer, roles.dao._address);
+  api3Token = await deployer.deployToken(
+    roles.deployer,
+    roles.dao._address,
+    roles.daoBank._address
+  );
 });
 
 describe("constructor", function () {
-  it("DAO receives the ownership of the token contract and the minted tokens at deployment", async function () {
+  it("deploys correctly", async function () {
+    expect(await api3Token.owner()).to.equal(roles.dao._address);
+
     const expectedTotalSupply = ethers.utils.parseEther((1e8).toString());
     const totalSupply = await api3Token.totalSupply();
-    const daoBalance = await api3Token.balanceOf(roles.dao._address);
     expect(totalSupply).to.equal(expectedTotalSupply);
-    expect(daoBalance).to.equal(expectedTotalSupply);
-    expect(await api3Token.owner()).to.equal(roles.dao._address);
+
+    const daoBankBalance = await api3Token.balanceOf(roles.daoBank._address);
+    expect(daoBankBalance).to.equal(expectedTotalSupply);
   });
 });
 
 describe("updateMinterStatus", function () {
   context("If the caller is the DAO", async function () {
-    it("can be used to give and revoke minting authorization", async function () {
-      // Authorize roles.minter to mint
-      let tx = await api3Token
-        .connect(roles.dao)
-        .updateMinterStatus(roles.minter._address, true);
-      await utils.verifyLog(
-        api3Token,
-        tx,
-        "MinterStatusUpdated(address,bool)",
-        {
-          minterAddress: roles.minter._address,
-          minterStatus: true,
-        }
+    it("can be used to give minting authorization", async function () {
+      // Authorizer minter to mint
+      await expect(
+        api3Token
+          .connect(roles.dao)
+          .updateMinterStatus(roles.minter._address, true)
+      )
+        .to.emit(api3Token, "MinterStatusUpdated")
+        .withArgs(roles.minter._address, true);
+      expect(await api3Token.getMinterStatus(roles.minter._address)).to.equal(
+        true
       );
-      let minterMinterStatus = await api3Token.getMinterStatus(
-        roles.minter._address
-      );
-      expect(minterMinterStatus).to.equal(true);
       // Mint 200 million tokens
       const initialTotalSupply = await api3Token.totalSupply();
       const amountToBeMinted = ethers.utils.parseEther((2e8).toString());
@@ -55,26 +56,26 @@ describe("updateMinterStatus", function () {
       const expectedTotalSupply = initialTotalSupply.add(amountToBeMinted);
       // Check balances
       const totalSupply = await api3Token.totalSupply();
-      const minterBalance = await api3Token.balanceOf(roles.minter._address);
       expect(totalSupply).to.equal(expectedTotalSupply);
+      const minterBalance = await api3Token.balanceOf(roles.minter._address);
       expect(minterBalance).to.equal(amountToBeMinted);
-      // Revoke minting authorization
-      tx = await api3Token
+    });
+    it("can be used to revoke minting authorization", async function () {
+      // Authorizer minter to mint, to revoke later
+      await api3Token
         .connect(roles.dao)
-        .updateMinterStatus(roles.minter._address, false);
-      await utils.verifyLog(
-        api3Token,
-        tx,
-        "MinterStatusUpdated(address,bool)",
-        {
-          minterAddress: roles.minter._address,
-          minterStatus: false,
-        }
+        .updateMinterStatus(roles.minter._address, true);
+      // Revoke minting authorization
+      await expect(
+        api3Token
+          .connect(roles.dao)
+          .updateMinterStatus(roles.minter._address, false)
+      )
+        .to.emit(api3Token, "MinterStatusUpdated")
+        .withArgs(roles.minter._address, false);
+      expect(await api3Token.getMinterStatus(roles.minter._address)).to.equal(
+        false
       );
-      minterMinterStatus = await api3Token.getMinterStatus(
-        roles.minter._address
-      );
-      expect(minterMinterStatus).to.equal(false);
       // Attempt to mint
       await expect(
         api3Token
@@ -98,12 +99,11 @@ describe("updateMinterStatus", function () {
 });
 
 describe("mint", function () {
-  context("If the caller is not a minter", async function () {
+  context("If the caller is not authorized to mint", async function () {
     it("reverts", async function () {
-      const randomPersonMinterStatus = await api3Token.getMinterStatus(
-        roles.randomPerson._address
-      );
-      expect(randomPersonMinterStatus).to.equal(false);
+      expect(
+        await api3Token.getMinterStatus(roles.randomPerson._address)
+      ).to.equal(false);
       await expect(
         api3Token
           .connect(roles.randomPerson)

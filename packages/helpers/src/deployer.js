@@ -1,9 +1,12 @@
-async function deployToken(deployer, ownerAddress) {
+async function deployToken(deployer, contractOwner, mintDestination) {
   const api3TokenFactory = await ethers.getContractFactory(
     "Api3Token",
     deployer
   );
-  const api3Token = await api3TokenFactory.deploy(ownerAddress);
+  const api3Token = await api3TokenFactory.deploy(
+    contractOwner,
+    mintDestination
+  );
   return api3Token;
 }
 
