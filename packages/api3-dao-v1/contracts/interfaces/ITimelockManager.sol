@@ -41,6 +41,12 @@ interface ITimelockManager {
         )
         external;
 
+    function reverseTimelockMultiple(
+        uint256[] calldata indTimelocks,
+        address destination
+        )
+        external;
+
     function withdraw(
         uint256 indTimelock,
         address destination

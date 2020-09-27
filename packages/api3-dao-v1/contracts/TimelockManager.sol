@@ -126,10 +126,10 @@ contract TimelockManager is Ownable, ITimelockManager {
                 && owners.length == reversibles.length,
             "Lengths of parameters do not match"
             );
-        // 36 elements cost slightly less than 3,000,000 in gas
+        // 30 elements cost slightly more than 3,000,000 in gas
         require(
-            owners.length <= 36,
-            "Parameters are longer than 36"
+            owners.length <= 30,
+            "Parameters are longer than 30"
             );
         for (uint256 ind = 0; ind < owners.length; ind++)
         {
@@ -145,7 +145,7 @@ contract TimelockManager is Ownable, ITimelockManager {
         uint256 indTimelock,
         address destination
         )
-        external
+        public
         override
         onlyOwner
     {
@@ -170,6 +170,29 @@ contract TimelockManager is Ownable, ITimelockManager {
         // Do not check if the timelock has matured
         delete timelocks[indTimelock].amount;
         api3Token.transfer(destination, timelock.amount);
+    }
+
+    /// @notice Convenience function that calls reverseTimelock() multiple times
+    /// @dev destination is expected to be a single address, i.e., the DAO
+    /// @param indTimelocks Array of indices of timelocks to be reversed
+    /// @param destination Address that will receive the tokens
+    function reverseTimelockMultiple(
+        uint256[] calldata indTimelocks,
+        address destination
+        )
+        external
+        override
+        onlyOwner
+    {
+        // Use the same limit as transferAndLockMultiple() for consistency
+        require(
+            indTimelocks.length <= 30,
+            "Parameters are longer than 30"
+            );
+        for (uint256 ind = 0; ind < indTimelocks.length; ind++)
+        {
+            reverseTimelock(indTimelocks[ind], destination);
+        }
     }
 
     /// @notice Used by the owner to withdraw tokens kept by a specific
