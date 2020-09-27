@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "scripts": {
     "build": "buidler compile",
-    "deploy-mainnet": "buidler run --network mainnet scripts/deploy.js",
-    "deploy-rinkeby": "buidler run --network rinkeby scripts/deploy.js",
+    "deploy:mainnet": "buidler deploy --network mainnet",
+    "deploy:rinkeby": "buidler deploy --network rinkeby",
     "flatten": "truffle-flattener ./contracts/Api3Token.sol > Api3Token.flat.sol && npm run flatten:delete-license-lines",
     "flatten:delete-license-lines": "sed --in-place '/SPDX-License-Identifier/d' Api3Token.flat.sol",
     "test": "buidler test"
@@ -15,6 +15,7 @@
     "@nomiclabs/buidler-ethers": "^2.0.0",
     "@nomiclabs/buidler-waffle": "^2.0.0",
     "@openzeppelin/contracts": "^3.1.0",
+    "buidler-deploy": "^0.6.0-beta.16",
     "chai": "^4.2.0",
     "dotenv": "^8.2.0",
     "ethereum-waffle": "^3.0.2",
