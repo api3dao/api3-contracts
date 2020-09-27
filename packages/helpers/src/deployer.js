@@ -63,7 +63,7 @@ module.exports = {
     firstEpochStartTimestamp = Math.floor(Date.now() / 1000), // first epoch starts right away
     startEpoch = 100 // inflationary rewards start 100 epoch later
   ) {
-    const api3Token = await deployToken(deployer, ownerAddress);
+    const api3Token = await deployToken(deployer, ownerAddress, ownerAddress);
     const timelockManager = await deployTimelockManager(
       deployer,
       ownerAddress,
@@ -90,7 +90,7 @@ module.exports = {
     firstEpochStartTimestamp = Math.floor(Date.now() / 1000), // first epoch starts right away
     startEpoch = 100 // inflationary rewards start 100 epoch later
   ) {
-    const api3Token = await deployToken(deployer, ownerAddress);
+    const api3Token = await deployToken(deployer, ownerAddress, ownerAddress);
     const api3Pool = await deployPool(
       deployer,
       epochPeriodInSeconds,
