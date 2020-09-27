@@ -7,18 +7,20 @@
     "lint:solhint": "solhint ./**/*.sol",
     "lint:eslint": "eslint . --ext .js",
     "prettify": "prettier --write \"./**/*.js\"",
+    "pretty-quick": "pretty-quick --staged --pattern \"**/*.*(js|ts)\"",
     "test": "npm run build && lerna run test"
   },
   "devDependencies": {
-    "lerna": "^3.22.1",
     "eslint": "^7.7.0",
     "husky": "^4.2.5",
+    "lerna": "^3.22.1",
     "prettier": "^2.0.5",
+    "pretty-quick": "^3.0.2",
     "solhint": "^3.2.0"
   },
   "husky": {
     "hooks": {
-      "pre-commit": "npm run prettify && npm run lint"
+      "pre-commit": "npm run pretty-quick && npm run lint"
     }
   }
 }
