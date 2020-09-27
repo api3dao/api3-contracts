@@ -10,7 +10,8 @@ interface ITimelockManager {
         address source,
         address indexed owner,
         uint256 amount,
-        uint256 releaseTime
+        uint256 releaseTime,
+        bool reversible
     );
 
     function updateApi3Pool(address api3PoolAddress)
@@ -20,7 +21,8 @@ interface ITimelockManager {
         address source,
         address owner,
         uint256 amount,
-        uint256 releaseTime
+        uint256 releaseTime,
+        bool reversible
         )
         external;
 
@@ -28,7 +30,14 @@ interface ITimelockManager {
         address source,
         address[] calldata owners,
         uint256[] calldata amounts,
-        uint256[] calldata releaseTimes
+        uint256[] calldata releaseTimes,
+        bool[] calldata reversibles
+        )
+        external;
+
+    function reverseTimelock(
+        uint256 indTimelock,
+        address destination
         )
         external;
 
