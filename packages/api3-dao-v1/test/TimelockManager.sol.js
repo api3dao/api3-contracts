@@ -8,6 +8,7 @@ let roles;
 let timelocks;
 
 async function batchDeployTimelocks() {
+  // Approve enough tokens to cover all timelocks
   await api3Token.connect(roles.dao).approve(
     timelockManager.address,
     timelocks.reduce(
@@ -15,12 +16,14 @@ async function batchDeployTimelocks() {
       ethers.BigNumber.from(0)
     )
   );
+  // Batch-deploy timelocks
   let tx = await timelockManager.connect(roles.dao).transferAndLockMultiple(
     roles.dao._address,
     timelocks.map((timelock) => timelock.owner),
     timelocks.map((timelock) => timelock.amount),
     timelocks.map((timelock) => timelock.releaseTime)
   );
+  // Check that each timelock deployment has emitted its respective event
   for (const timelock of timelocks) {
     await utils.verifyLog(
       timelockManager,
@@ -37,11 +40,13 @@ async function batchDeployTimelocks() {
 }
 
 async function verifyDeployedTimelocks() {
+  // Retrieve all timelocks and check that their number is correct
   const retrievedTimelocks = await timelockManager.getTimelocks();
   expect(retrievedTimelocks.owners.length).to.equal(timelocks.length);
   expect(retrievedTimelocks.amounts.length).to.equal(timelocks.length);
   expect(retrievedTimelocks.releaseTimes.length).to.equal(timelocks.length);
   for (const timelock of timelocks) {
+    // Search for each timelock among the retrieved timelocks
     const indTimelock = retrievedTimelocks.owners.findIndex(
       (owner, ind) =>
         owner == timelock.owner &&
@@ -49,6 +54,7 @@ async function verifyDeployedTimelocks() {
         retrievedTimelocks.releaseTimes[ind].eq(timelock.releaseTime)
     );
     expect(indTimelock).to.not.equal(-1);
+    // Retrieve the timelock individually and check its fields again
     const individuallyRetrievedTimelock = await timelockManager.getTimelock(
       indTimelock
     );
@@ -95,14 +101,21 @@ beforeEach(async () => {
       releaseTime: ethers.BigNumber.from(currentTimestamp + 30000),
     },
   ];
-  ({ api3Token, timelockManager, api3Pool } = await deployer.deployAll(
+  api3Token = await deployer.deployToken(
     roles.deployer,
+    roles.dao._address,
     roles.dao._address
-  ));
+  );
+  timelockManager = await deployer.deployTimelockManager(
+    roles.deployer,
+    roles.dao._address,
+    api3Token.address
+  );
+  api3Pool = await deployer.deployPool(roles.deployer, api3Token.address);
 });
 
 describe("constructor", function () {
-  it("Token address, pool address and ownership are set correctly at deployment", async function () {
+  it("deploys correctly", async function () {
     expect(await timelockManager.api3Token()).to.equal(api3Token.address);
     expect(await timelockManager.owner()).to.equal(roles.dao._address);
     expect(await timelockManager.api3Pool()).to.equal(
@@ -115,12 +128,11 @@ describe("updateApi3Pool", function () {
   context("If the caller is the DAO", async function () {
     it("updates the pool address", async function () {
       const newPoolAddress = "0x0000000000000000000000000000000000000001";
-      let tx = await timelockManager
-        .connect(roles.dao)
-        .updateApi3Pool(newPoolAddress);
-      await utils.verifyLog(timelockManager, tx, "Api3PoolUpdated(address)", {
-        api3PoolAddress: newPoolAddress,
-      });
+      await expect(
+        timelockManager.connect(roles.dao).updateApi3Pool(newPoolAddress)
+      )
+        .to.emit(timelockManager, "Api3PoolUpdated")
+        .withArgs(newPoolAddress);
       expect(await timelockManager.api3Pool()).to.equal(newPoolAddress);
     });
   });
@@ -139,6 +151,7 @@ describe("updateApi3Pool", function () {
 describe("transferAndLock", function () {
   context("If the caller is the DAO", async function () {
     it("transfers and locks tokens individually", async function () {
+      // Approve enough tokens to cover all timelocks
       await api3Token.connect(roles.dao).approve(
         timelockManager.address,
         timelocks.reduce(
@@ -146,6 +159,7 @@ describe("transferAndLock", function () {
           ethers.BigNumber.from(0)
         )
       );
+      // Deploy timelocks individually
       for (const timelock of timelocks) {
         let tx = await timelockManager
           .connect(roles.dao)
@@ -172,6 +186,7 @@ describe("transferAndLock", function () {
   });
   context("If the caller is not the DAO", async function () {
     it("reverts", async function () {
+      // Transfer tokens to randomPerson for them to deploy the timelocks
       await api3Token.connect(roles.dao).transfer(
         roles.randomPerson._address,
         timelocks.reduce(
@@ -179,6 +194,7 @@ describe("transferAndLock", function () {
           ethers.BigNumber.from(0)
         )
       );
+      // Have randomPerson approve enough tokens to cover all timelocks
       await api3Token.connect(roles.randomPerson).approve(
         timelockManager.address,
         timelocks.reduce(
@@ -208,6 +224,7 @@ describe("transferAndLockMultiple", function () {
     });
     context("parameters are of unequal length", async function () {
       it("reverts", async function () {
+        // Approve enough tokens to cover all timelocks
         await api3Token.connect(roles.dao).approve(
           timelockManager.address,
           timelocks.reduce(
@@ -227,6 +244,7 @@ describe("transferAndLockMultiple", function () {
     });
     context("parameters are longer than 36", async function () {
       it("reverts", async function () {
+        // Approve enough tokens to cover all timelocks
         await api3Token.connect(roles.dao).approve(
           timelockManager.address,
           timelocks.reduce(
@@ -249,6 +267,7 @@ describe("transferAndLockMultiple", function () {
   });
   context("If the caller is not the DAO", async function () {
     it("reverts", async function () {
+      // Transfer tokens to randomPerson for them to deploy the timelocks
       await api3Token.connect(roles.dao).transfer(
         roles.randomPerson._address,
         timelocks.reduce(
@@ -256,6 +275,7 @@ describe("transferAndLockMultiple", function () {
           ethers.BigNumber.from(0)
         )
       );
+      // Have randomPerson approve enough tokens to cover all timelocks
       await api3Token.connect(roles.randomPerson).approve(
         timelockManager.address,
         timelocks.reduce(
@@ -281,27 +301,34 @@ describe("withdraw", function () {
       it("withdraws", async function () {
         await batchDeployTimelocks();
         const retrievedTimelocks = await timelockManager.getTimelocks();
+        // Sort timelocks with respect to their releaseTimes because we need to
+        // fast forward the EVM time in sequence
         let timelocksCopy = timelocks.slice();
         timelocksCopy.sort((a, b) => {
           return a.releaseTime.gt(b.releaseTime) ? 1 : -1;
         });
         for (const timelock of timelocksCopy) {
+          // Find the timelock among the retrieved timelocks
           const indTimelock = retrievedTimelocks.owners.findIndex(
             (owner, ind) =>
               owner == timelock.owner &&
               retrievedTimelocks.amounts[ind].eq(timelock.amount) &&
               retrievedTimelocks.releaseTimes[ind].eq(timelock.releaseTime)
           );
+          // Fast forward time so that the timelock is resolvable
           await ethers.provider.send("evm_setNextBlockTimestamp", [
             retrievedTimelocks.releaseTimes[indTimelock].toNumber() + 1,
           ]);
+          // Get the owner of the timelock
           const ownerRole = Object.values(roles).find(
             (role) => role._address == retrievedTimelocks.owners[indTimelock]
           );
           const previousBalance = await api3Token.balanceOf(ownerRole._address);
+          // Have the owner redeem the tokens to their own address
           await timelockManager
             .connect(ownerRole)
             .withdraw(indTimelock, ownerRole._address);
+          // Check if the withdrawal was successful
           const afterBalance = await api3Token.balanceOf(ownerRole._address);
           expect(afterBalance.sub(previousBalance)).to.equal(
             retrievedTimelocks.amounts[indTimelock]
@@ -313,6 +340,7 @@ describe("withdraw", function () {
         async function () {
           it("reverts", async function () {
             await batchDeployTimelocks();
+            // Withdraw a timelock once
             const retrievedTimelocks = await timelockManager.getTimelocks();
             const indTimelock = retrievedTimelocks.owners.findIndex(
               (owner) => owner == roles.owner1._address
@@ -323,7 +351,7 @@ describe("withdraw", function () {
             await timelockManager
               .connect(roles.owner1)
               .withdraw(indTimelock, roles.owner1._address);
-
+            // Verify that the withdrawn timelock is deleted
             const individuallyRetrievedTimelock = await timelockManager.getTimelock(
               indTimelock
             );
@@ -332,6 +360,7 @@ describe("withdraw", function () {
             );
             expect(individuallyRetrievedTimelock.amount).to.equal(0);
             expect(individuallyRetrievedTimelock.releaseTime).to.equal(0);
+            // Attempt to withdraw the same timelock
             await expect(
               timelockManager
                 .connect(roles.owner1)
@@ -452,6 +481,7 @@ describe("withdrawToPool", function () {
         async function () {
           it("reverts", async function () {
             await batchDeployTimelocks();
+            // Withdraw a timelock to the pool once
             await timelockManager
               .connect(roles.dao)
               .updateApi3Pool(api3Pool.address);
@@ -466,7 +496,7 @@ describe("withdrawToPool", function () {
                 api3Pool.address,
                 roles.owner1._address
               );
-
+            // Verify that the withdrawn timelock is deleted
             const individuallyRetrievedTimelock = await timelockManager.getTimelock(
               indTimelock
             );
@@ -475,7 +505,7 @@ describe("withdrawToPool", function () {
             );
             expect(individuallyRetrievedTimelock.amount).to.equal(0);
             expect(individuallyRetrievedTimelock.releaseTime).to.equal(0);
-
+            // Attempt to withdraw the same timelock to the pool
             await expect(
               timelockManager
                 .connect(roles.owner1)

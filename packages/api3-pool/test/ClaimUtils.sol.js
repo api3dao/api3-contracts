@@ -31,10 +31,12 @@ describe("ClaimUtils", function () {
         amount: ethers.utils.parseEther((3e3).toString()),
       },
     ];
-    ({ api3Token, api3Pool } = await deployer.deployPoolAndToken(
+    api3Token = await deployer.deployToken(
       roles.owner,
+      roles.owner._address,
       roles.owner._address
-    ));
+    );
+    api3Pool = await deployer.deployPool(roles.owner, api3Token.address);
     await api3Pool
       .connect(roles.owner)
       .updateClaimsManager(roles.claimsManager._address);

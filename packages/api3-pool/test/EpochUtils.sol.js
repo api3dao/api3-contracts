@@ -12,12 +12,17 @@ describe("EpochUtils", function () {
     roles = {
       owner: accounts[0],
     };
-    ({ api3Pool } = await deployer.deployPoolAndToken(
+    const api3Token = await deployer.deployToken(
       roles.owner,
       roles.owner._address,
+      roles.owner._address
+    );
+    api3Pool = await deployer.deployPool(
+      roles.owner,
+      api3Token.address,
       epochPeriodInSeconds,
       firstEpochStartTimestamp
-    ));
+    );
   });
 
   it("Returns correct epoch indices", async function () {

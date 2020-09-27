@@ -24,13 +24,13 @@ async function deployTimelockManager(deployer, ownerAddress, api3TokenAddress) {
 
 async function deployPool(
   deployer,
-  epochPeriodInSeconds,
-  firstEpochStartTimestamp,
-  api3Token
+  api3TokenAddress,
+  epochPeriodInSeconds = 60 * 24 * 7,
+  firstEpochStartTimestamp = Math.floor(Date.now() / 1000)
 ) {
   const api3PoolFactory = await ethers.getContractFactory("Api3Pool", deployer);
   const api3Pool = await api3PoolFactory.deploy(
-    api3Token.address,
+    api3TokenAddress,
     epochPeriodInSeconds,
     firstEpochStartTimestamp
   );
@@ -39,72 +39,25 @@ async function deployPool(
 
 async function deployInflationManager(
   deployer,
-  startEpoch,
-  api3Token,
-  api3Pool
+  api3TokenAddress,
+  api3PoolAddress,
+  startEpoch = 100
 ) {
   const inflationManagerFactory = await ethers.getContractFactory(
     "InflationManager",
     deployer
   );
   const inflationManager = await inflationManagerFactory.deploy(
-    api3Token.address,
-    api3Pool.address,
+    api3TokenAddress,
+    api3PoolAddress,
     startEpoch
   );
   return inflationManager;
 }
 
 module.exports = {
-  deployAll: async function (
-    deployer,
-    ownerAddress,
-    epochPeriodInSeconds = 60 * 24 * 7, // week-long epochs
-    firstEpochStartTimestamp = Math.floor(Date.now() / 1000), // first epoch starts right away
-    startEpoch = 100 // inflationary rewards start 100 epoch later
-  ) {
-    const api3Token = await deployToken(deployer, ownerAddress, ownerAddress);
-    const timelockManager = await deployTimelockManager(
-      deployer,
-      ownerAddress,
-      api3Token.address
-    );
-    const api3Pool = await deployPool(
-      deployer,
-      epochPeriodInSeconds,
-      firstEpochStartTimestamp,
-      api3Token
-    );
-    const inflationManager = await deployInflationManager(
-      deployer,
-      startEpoch,
-      api3Token,
-      api3Pool
-    );
-    return { api3Token, timelockManager, api3Pool, inflationManager };
-  },
-  deployPoolAndToken: async function (
-    deployer,
-    ownerAddress,
-    epochPeriodInSeconds = 60 * 24 * 7, // week-long epochs
-    firstEpochStartTimestamp = Math.floor(Date.now() / 1000), // first epoch starts right away
-    startEpoch = 100 // inflationary rewards start 100 epoch later
-  ) {
-    const api3Token = await deployToken(deployer, ownerAddress, ownerAddress);
-    const api3Pool = await deployPool(
-      deployer,
-      epochPeriodInSeconds,
-      firstEpochStartTimestamp,
-      api3Token
-    );
-    const inflationManager = await deployInflationManager(
-      deployer,
-      startEpoch,
-      api3Token,
-      api3Pool
-    );
-    return { api3Token, api3Pool, inflationManager };
-  },
   deployToken: deployToken,
   deployTimelockManager: deployTimelockManager,
+  deployPool: deployPool,
+  deployInflationManager: deployInflationManager,
 };
