@@ -183,6 +183,20 @@ describe("transferAndLock", function () {
       }
       await verifyDeployedTimelocks();
     });
+    context("If the transferred and locked amount is 0", async function () {
+      it("reverts", async function () {
+        await expect(
+          timelockManager
+            .connect(roles.dao)
+            .transferAndLock(
+              roles.dao._address,
+              timelocks[0].owner,
+              0,
+              timelocks[0].releaseTime
+            )
+        ).to.be.revertedWith("Transferred and locked amount cannot be 0");
+      });
+    });
   });
   context("If the caller is not the DAO", async function () {
     it("reverts", async function () {
@@ -351,23 +365,17 @@ describe("withdraw", function () {
             await timelockManager
               .connect(roles.owner1)
               .withdraw(indTimelock, roles.owner1._address);
-            // Verify that the withdrawn timelock is deleted
+            // Verify that the withdrawn timelock amount is deleted
             const individuallyRetrievedTimelock = await timelockManager.getTimelock(
               indTimelock
             );
-            expect(individuallyRetrievedTimelock.owner).to.equal(
-              ethers.constants.AddressZero
-            );
             expect(individuallyRetrievedTimelock.amount).to.equal(0);
-            expect(individuallyRetrievedTimelock.releaseTime).to.equal(0);
             // Attempt to withdraw the same timelock
             await expect(
               timelockManager
                 .connect(roles.owner1)
                 .withdraw(indTimelock, roles.owner1._address)
-            ).to.be.revertedWith(
-              "Only the owner of the timelock can withdraw from it"
-            );
+            ).to.be.revertedWith("Timelock is already withdrawn");
           });
         }
       );
@@ -496,15 +504,11 @@ describe("withdrawToPool", function () {
                 api3Pool.address,
                 roles.owner1._address
               );
-            // Verify that the withdrawn timelock is deleted
+            // Verify that the withdrawn timelock amount is deleted
             const individuallyRetrievedTimelock = await timelockManager.getTimelock(
               indTimelock
             );
-            expect(individuallyRetrievedTimelock.owner).to.equal(
-              ethers.constants.AddressZero
-            );
             expect(individuallyRetrievedTimelock.amount).to.equal(0);
-            expect(individuallyRetrievedTimelock.releaseTime).to.equal(0);
             // Attempt to withdraw the same timelock to the pool
             await expect(
               timelockManager
@@ -514,9 +518,7 @@ describe("withdrawToPool", function () {
                   api3Pool.address,
                   roles.owner1._address
                 )
-            ).to.be.revertedWith(
-              "Only the owner of the timelock can withdraw from it"
-            );
+            ).to.be.revertedWith("Timelock is already withdrawn");
           });
         }
       );

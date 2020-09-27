@@ -79,6 +79,7 @@ contract TimelockManager is Ownable, ITimelockManager {
         override
         onlyOwner
     {
+        require(amount != 0, "Transferred and locked amount cannot be 0");
         timelocks[noTimelocks] = Timelock({
             owner: owner,
             amount: amount,
@@ -147,6 +148,10 @@ contract TimelockManager is Ownable, ITimelockManager {
             );
         Timelock memory timelock = timelocks[indTimelock];
         require(
+            timelock.amount != 0,
+            "Timelock is already withdrawn"
+            );
+        require(
             msg.sender == timelock.owner,
             "Only the owner of the timelock can withdraw from it"
             );
@@ -154,7 +159,7 @@ contract TimelockManager is Ownable, ITimelockManager {
             now > timelock.releaseTime,
             "Timelock has not matured yet"
             );
-        delete timelocks[indTimelock];
+        delete timelocks[indTimelock].amount;
         api3Token.transfer(destination, timelock.amount);
     }
 
@@ -190,11 +195,15 @@ contract TimelockManager is Ownable, ITimelockManager {
             );
         Timelock memory timelock = timelocks[indTimelock];
         require(
+            timelock.amount != 0,
+            "Timelock is already withdrawn"
+            );
+        require(
             msg.sender == timelock.owner,
             "Only the owner of the timelock can withdraw from it"
             );
         // We deliberately skip checking for timelock maturity
-        delete timelocks[indTimelock];
+        delete timelocks[indTimelock].amount;
         api3Token.approve(address(api3Pool), timelock.amount);
         // If (now > timelock.releaseTime), the beneficiary can immediately
         // have their tokens vested at the pool with an additional transaction
