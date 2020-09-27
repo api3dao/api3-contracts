@@ -21,19 +21,21 @@ async function batchDeployTimelocks() {
     roles.dao._address,
     timelocks.map((timelock) => timelock.owner),
     timelocks.map((timelock) => timelock.amount),
-    timelocks.map((timelock) => timelock.releaseTime)
+    timelocks.map((timelock) => timelock.releaseTime),
+    timelocks.map((timelock) => timelock.reversible)
   );
   // Check that each timelock deployment has emitted its respective event
   for (const timelock of timelocks) {
     await utils.verifyLog(
       timelockManager,
       tx,
-      "TransferredAndLocked(uint256,address,address,uint256,uint256)",
+      "TransferredAndLocked(uint256,address,address,uint256,uint256,bool)",
       {
         source: roles.dao._address,
         owner: timelock.owner,
         amount: timelock.amount,
         releaseTime: timelock.releaseTime,
+        reversible: timelock.reversible,
       }
     );
   }
@@ -45,13 +47,15 @@ async function verifyDeployedTimelocks() {
   expect(retrievedTimelocks.owners.length).to.equal(timelocks.length);
   expect(retrievedTimelocks.amounts.length).to.equal(timelocks.length);
   expect(retrievedTimelocks.releaseTimes.length).to.equal(timelocks.length);
+  expect(retrievedTimelocks.reversibles.length).to.equal(timelocks.length);
   for (const timelock of timelocks) {
     // Search for each timelock among the retrieved timelocks
     const indTimelock = retrievedTimelocks.owners.findIndex(
       (owner, ind) =>
         owner == timelock.owner &&
         retrievedTimelocks.amounts[ind].eq(timelock.amount) &&
-        retrievedTimelocks.releaseTimes[ind].eq(timelock.releaseTime)
+        retrievedTimelocks.releaseTimes[ind].eq(timelock.releaseTime) &&
+        retrievedTimelocks.reversibles[ind] == timelock.reversible
     );
     expect(indTimelock).to.not.equal(-1);
     // Retrieve the timelock individually and check its fields again
@@ -62,6 +66,9 @@ async function verifyDeployedTimelocks() {
     expect(individuallyRetrievedTimelock.amount).to.equal(timelock.amount);
     expect(individuallyRetrievedTimelock.releaseTime).to.equal(
       timelock.releaseTime
+    );
+    expect(individuallyRetrievedTimelock.reversible).to.equal(
+      timelock.reversible
     );
   }
 }
@@ -84,21 +91,25 @@ beforeEach(async () => {
       owner: roles.owner1._address,
       amount: ethers.utils.parseEther((2e2).toString()),
       releaseTime: ethers.BigNumber.from(currentTimestamp + 40000),
+      reversible: true,
     },
     {
       owner: roles.owner2._address,
       amount: ethers.utils.parseEther((8e2).toString()),
       releaseTime: ethers.BigNumber.from(currentTimestamp + 20000),
+      reversible: false,
     },
     {
       owner: roles.owner1._address,
       amount: ethers.utils.parseEther((5e2).toString()),
       releaseTime: ethers.BigNumber.from(currentTimestamp + 10000),
+      reversible: false,
     },
     {
       owner: roles.owner2._address,
       amount: ethers.utils.parseEther((3e2).toString()),
       releaseTime: ethers.BigNumber.from(currentTimestamp + 30000),
+      reversible: true,
     },
   ];
   api3Token = await deployer.deployToken(
@@ -167,17 +178,19 @@ describe("transferAndLock", function () {
             roles.dao._address,
             timelock.owner,
             timelock.amount,
-            timelock.releaseTime
+            timelock.releaseTime,
+            timelock.reversible
           );
         await utils.verifyLog(
           timelockManager,
           tx,
-          "TransferredAndLocked(uint256,address,address,uint256,uint256)",
+          "TransferredAndLocked(uint256,address,address,uint256,uint256,bool)",
           {
             source: roles.dao._address,
             owner: timelock.owner,
             amount: timelock.amount,
             releaseTime: timelock.releaseTime,
+            reversible: timelock.reversible,
           }
         );
       }
@@ -192,7 +205,8 @@ describe("transferAndLock", function () {
               roles.dao._address,
               timelocks[0].owner,
               0,
-              timelocks[0].releaseTime
+              timelocks[0].releaseTime,
+              timelocks[0].reversible
             )
         ).to.be.revertedWith("Transferred and locked amount cannot be 0");
       });
@@ -223,7 +237,8 @@ describe("transferAndLock", function () {
             roles.randomPerson._address,
             timelocks[0].owner,
             timelocks[0].amount,
-            timelocks[0].releaseTime
+            timelocks[0].releaseTime,
+            timelocks[0].reversible
           )
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
@@ -251,31 +266,25 @@ describe("transferAndLockMultiple", function () {
             roles.dao._address,
             [timelocks[0].owner],
             timelocks.map((timelock) => timelock.amount),
-            timelocks.map((timelock) => timelock.releaseTime)
+            timelocks.map((timelock) => timelock.releaseTime),
+            timelocks.map((timelock) => timelock.reversible)
           )
         ).to.be.revertedWith("Lengths of parameters do not match");
       });
     });
-    context("parameters are longer than 36", async function () {
+    context("parameters are longer than 30", async function () {
       it("reverts", async function () {
-        // Approve enough tokens to cover all timelocks
-        await api3Token.connect(roles.dao).approve(
-          timelockManager.address,
-          timelocks.reduce(
-            (acc, timelock) => acc.add(timelock.amount),
-            ethers.BigNumber.from(0)
-          )
-        );
         await expect(
           timelockManager
             .connect(roles.dao)
             .transferAndLockMultiple(
               roles.dao._address,
-              Array(37).fill(timelocks[0].owner),
-              Array(37).fill(timelocks[0].amount),
-              Array(37).fill(timelocks[0].releaseTime)
+              Array(31).fill(timelocks[0].owner),
+              Array(31).fill(timelocks[0].amount),
+              Array(31).fill(timelocks[0].releaseTime),
+              Array(31).fill(timelocks[0].reversible)
             )
-        ).to.be.revertedWith("Parameters are longer than 36");
+        ).to.be.revertedWith("Parameters are longer than 30");
       });
     });
   });
@@ -302,8 +311,232 @@ describe("transferAndLockMultiple", function () {
           roles.dao._address,
           timelocks.map((timelock) => timelock.owner),
           timelocks.map((timelock) => timelock.amount),
-          timelocks.map((timelock) => timelock.releaseTime)
+          timelocks.map((timelock) => timelock.releaseTime),
+          timelocks.map((timelock) => timelock.reversible)
         )
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+});
+
+describe("reverseTimelock", function () {
+  context("If the caller is the DAO", async function () {
+    it("reverses reversible timelocks individually", async function () {
+      await batchDeployTimelocks();
+      const retrievedTimelocks = await timelockManager.getTimelocks();
+      const reversibleTimelocks = timelocks.filter(
+        (timelock) => timelock.reversible
+      );
+      for (const reversibleTimelock of reversibleTimelocks) {
+        // Find the timelock among the retrieved timelocks
+        const indTimelock = retrievedTimelocks.owners.findIndex(
+          (owner, ind) =>
+            owner == reversibleTimelock.owner &&
+            retrievedTimelocks.amounts[ind].eq(reversibleTimelock.amount) &&
+            retrievedTimelocks.releaseTimes[ind].eq(
+              reversibleTimelock.releaseTime
+            ) &&
+            retrievedTimelocks.reversibles[ind] == reversibleTimelock.reversible
+        );
+        const previousBalance = await api3Token.balanceOf(roles.dao._address);
+        // Have the DAO reverse the timelock and receive the tokens
+        await timelockManager
+          .connect(roles.dao)
+          .reverseTimelock(indTimelock, roles.dao._address);
+        // Check if the withdrawal was successful
+        const afterBalance = await api3Token.balanceOf(roles.dao._address);
+        expect(afterBalance.sub(previousBalance)).to.equal(
+          retrievedTimelocks.amounts[indTimelock]
+        );
+      }
+    });
+    context(
+      "If the DAO attempts to reverse a timelock a second time",
+      async function () {
+        it("reverts", async function () {
+          await batchDeployTimelocks();
+          const retrievedTimelocks = await timelockManager.getTimelocks();
+          const reversibleTimelocks = timelocks.filter(
+            (timelock) => timelock.reversible
+          );
+          const indTimelock = retrievedTimelocks.owners.findIndex(
+            (owner, ind) =>
+              owner == reversibleTimelocks[0].owner &&
+              retrievedTimelocks.amounts[ind].eq(
+                reversibleTimelocks[0].amount
+              ) &&
+              retrievedTimelocks.releaseTimes[ind].eq(
+                reversibleTimelocks[0].releaseTime
+              ) &&
+              retrievedTimelocks.reversibles[ind] ==
+                reversibleTimelocks[0].reversible
+          );
+          await timelockManager
+            .connect(roles.dao)
+            .reverseTimelock(indTimelock, roles.dao._address);
+          await expect(
+            timelockManager
+              .connect(roles.dao)
+              .reverseTimelock(indTimelock, roles.dao._address)
+          ).to.be.revertedWith("Timelock is already withdrawn");
+        });
+      }
+    );
+    context("If the DAO attempts to withdraw to address 0", async function () {
+      it("reverts", async function () {
+        await batchDeployTimelocks();
+        const retrievedTimelocks = await timelockManager.getTimelocks();
+        const reversibleTimelocks = timelocks.filter(
+          (timelock) => timelock.reversible
+        );
+        const indTimelock = retrievedTimelocks.owners.findIndex(
+          (owner, ind) =>
+            owner == reversibleTimelocks[0].owner &&
+            retrievedTimelocks.amounts[ind].eq(reversibleTimelocks[0].amount) &&
+            retrievedTimelocks.releaseTimes[ind].eq(
+              reversibleTimelocks[0].releaseTime
+            ) &&
+            retrievedTimelocks.reversibles[ind] ==
+              reversibleTimelocks[0].reversible
+        );
+        await expect(
+          timelockManager
+            .connect(roles.dao)
+            .reverseTimelock(indTimelock, ethers.constants.AddressZero)
+        ).to.be.revertedWith("Cannot withdraw to address 0");
+      });
+    });
+    context("Timelock is not reversible", async function () {
+      it("reverts", async function () {
+        await batchDeployTimelocks();
+        const retrievedTimelocks = await timelockManager.getTimelocks();
+        const reversibleTimelocks = timelocks.filter(
+          (timelock) => !timelock.reversible
+        );
+        const indTimelock = retrievedTimelocks.owners.findIndex(
+          (owner, ind) =>
+            owner == reversibleTimelocks[0].owner &&
+            retrievedTimelocks.amounts[ind].eq(reversibleTimelocks[0].amount) &&
+            retrievedTimelocks.releaseTimes[ind].eq(
+              reversibleTimelocks[0].releaseTime
+            ) &&
+            retrievedTimelocks.reversibles[ind] ==
+              reversibleTimelocks[0].reversible
+        );
+        await expect(
+          timelockManager
+            .connect(roles.dao)
+            .reverseTimelock(indTimelock, roles.dao._address)
+        ).to.be.revertedWith("Timelock is not reversible");
+      });
+    });
+    context("If the timelock is withdrawn", async function () {
+      it("reverts", async function () {
+        await batchDeployTimelocks();
+        const retrievedTimelocks = await timelockManager.getTimelocks();
+        const reversibleTimelocks = timelocks.filter(
+          (timelock) => timelock.reversible
+        );
+        const indTimelock = retrievedTimelocks.owners.findIndex(
+          (owner, ind) =>
+            owner == roles.owner1._address &&
+            retrievedTimelocks.amounts[ind].eq(reversibleTimelocks[0].amount) &&
+            retrievedTimelocks.releaseTimes[ind].eq(
+              reversibleTimelocks[0].releaseTime
+            ) &&
+            retrievedTimelocks.reversibles[ind] ==
+              reversibleTimelocks[0].reversible
+        );
+        await ethers.provider.send("evm_setNextBlockTimestamp", [
+          retrievedTimelocks.releaseTimes[indTimelock].toNumber() + 1,
+        ]);
+        await timelockManager
+          .connect(roles.owner1)
+          .withdraw(indTimelock, roles.owner1._address);
+        await expect(
+          timelockManager
+            .connect(roles.dao)
+            .reverseTimelock(indTimelock, roles.dao._address)
+        ).to.be.revertedWith("Timelock is already withdrawn");
+      });
+    });
+  });
+  context("If the caller is not the DAO", async function () {
+    it("reverts", async function () {
+      await batchDeployTimelocks();
+      const retrievedTimelocks = await timelockManager.getTimelocks();
+      const reversibleTimelocks = timelocks.filter(
+        (timelock) => timelock.reversible
+      );
+      const indTimelock = retrievedTimelocks.owners.findIndex(
+        (owner, ind) =>
+          owner == reversibleTimelocks[0].owner &&
+          retrievedTimelocks.amounts[ind].eq(reversibleTimelocks[0].amount) &&
+          retrievedTimelocks.releaseTimes[ind].eq(
+            reversibleTimelocks[0].releaseTime
+          ) &&
+          retrievedTimelocks.reversibles[ind] ==
+            reversibleTimelocks[0].reversible
+      );
+      await expect(
+        timelockManager
+          .connect(roles.randomPerson)
+          .reverseTimelock(indTimelock, roles.randomPerson._address)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+});
+
+describe("reverseTimelockMultiple", function () {
+  context("If the caller is the DAO", async function () {
+    it("batch-reverses timelocks", async function () {
+      await batchDeployTimelocks();
+      const retrievedTimelocks = await timelockManager.getTimelocks();
+      const reversibleTimelocks = timelocks.filter(
+        (timelock) => timelock.reversible
+      );
+      const reversibleTimelockInds = [];
+      let totalAmount = ethers.BigNumber.from(0);
+      for (const reversibleTimelock of reversibleTimelocks) {
+        // Find the timelock among the retrieved timelocks
+        const indTimelock = retrievedTimelocks.owners.findIndex(
+          (owner, ind) =>
+            owner == reversibleTimelock.owner &&
+            retrievedTimelocks.amounts[ind].eq(reversibleTimelock.amount) &&
+            retrievedTimelocks.releaseTimes[ind].eq(
+              reversibleTimelock.releaseTime
+            ) &&
+            retrievedTimelocks.reversibles[ind] == reversibleTimelock.reversible
+        );
+        reversibleTimelockInds.push(indTimelock);
+        totalAmount = totalAmount.add(retrievedTimelocks.amounts[indTimelock]);
+      }
+      const previousBalance = await api3Token.balanceOf(roles.dao._address);
+      await timelockManager
+        .connect(roles.dao)
+        .reverseTimelockMultiple(reversibleTimelockInds, roles.dao._address);
+      const afterBalance = await api3Token.balanceOf(roles.dao._address);
+      expect(afterBalance.sub(previousBalance)).to.equal(totalAmount);
+    });
+    context("parameters are longer than 30", async function () {
+      it("reverts", async function () {
+        await expect(
+          timelockManager
+            .connect(roles.dao)
+            .reverseTimelockMultiple(
+              Array(31).fill(ethers.BigNumber.from(1)),
+              roles.dao._address
+            )
+        ).to.be.revertedWith("Parameters are longer than 30");
+      });
+    });
+  });
+  context("If the caller is not the DAO", async function () {
+    it("reverts", async function () {
+      await expect(
+        timelockManager
+          .connect(roles.randomPerson)
+          .reverseTimelockMultiple([1], roles.dao._address)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
@@ -327,7 +560,8 @@ describe("withdraw", function () {
             (owner, ind) =>
               owner == timelock.owner &&
               retrievedTimelocks.amounts[ind].eq(timelock.amount) &&
-              retrievedTimelocks.releaseTimes[ind].eq(timelock.releaseTime)
+              retrievedTimelocks.releaseTimes[ind].eq(timelock.releaseTime) &&
+              retrievedTimelocks.reversibles[ind] == timelock.reversible
           );
           // Fast forward time so that the timelock is resolvable
           await ethers.provider.send("evm_setNextBlockTimestamp", [
@@ -399,6 +633,38 @@ describe("withdraw", function () {
           });
         }
       );
+      context("If the timelock is reversed", async function () {
+        it("reverts", async function () {
+          await batchDeployTimelocks();
+          const retrievedTimelocks = await timelockManager.getTimelocks();
+          const reversibleTimelocks = timelocks.filter(
+            (timelock) => timelock.reversible
+          );
+          const indTimelock = retrievedTimelocks.owners.findIndex(
+            (owner, ind) =>
+              owner == roles.owner1._address &&
+              retrievedTimelocks.amounts[ind].eq(
+                reversibleTimelocks[0].amount
+              ) &&
+              retrievedTimelocks.releaseTimes[ind].eq(
+                reversibleTimelocks[0].releaseTime
+              ) &&
+              retrievedTimelocks.reversibles[ind] ==
+                reversibleTimelocks[0].reversible
+          );
+          await timelockManager
+            .connect(roles.dao)
+            .reverseTimelock(indTimelock, roles.dao._address);
+          await ethers.provider.send("evm_setNextBlockTimestamp", [
+            retrievedTimelocks.releaseTimes[indTimelock].toNumber() + 1,
+          ]);
+          await expect(
+            timelockManager
+              .connect(roles.owner1)
+              .withdraw(indTimelock, roles.owner1._address)
+          ).to.be.revertedWith("Timelock is already withdrawn");
+        });
+      });
     });
     context("Before releaseTime", async function () {
       it("reverts", async function () {
@@ -461,7 +727,8 @@ describe("withdrawToPool", function () {
             (owner, ind) =>
               owner == timelock.owner &&
               retrievedTimelocks.amounts[ind].eq(timelock.amount) &&
-              retrievedTimelocks.releaseTimes[ind].eq(timelock.releaseTime)
+              retrievedTimelocks.releaseTimes[ind].eq(timelock.releaseTime) &&
+              retrievedTimelocks.reversibles[ind] == timelock.reversible
           );
           const ownerRole = Object.values(roles).find(
             (role) => role._address == retrievedTimelocks.owners[indTimelock]
@@ -570,24 +837,6 @@ describe("withdrawToPool", function () {
           });
         }
       );
-      context("If the timelock does not exist", async function () {
-        it("reverts", async function () {
-          await batchDeployTimelocks();
-          await timelockManager
-            .connect(roles.dao)
-            .updateApi3Pool(api3Pool.address);
-          const indNonExistentTimelock = timelocks.length;
-          await expect(
-            timelockManager
-              .connect(roles.owner1)
-              .withdrawToPool(
-                indNonExistentTimelock,
-                api3Pool.address,
-                roles.owner1._address
-              )
-          ).to.be.revertedWith("No such timelock exists");
-        });
-      });
     });
     context("If the caller is not the owner", async function () {
       it("reverts", async function () {
@@ -610,6 +859,24 @@ describe("withdrawToPool", function () {
         ).to.be.revertedWith(
           "Only the owner of the timelock can withdraw from it"
         );
+      });
+    });
+    context("If the timelock does not exist", async function () {
+      it("reverts", async function () {
+        await batchDeployTimelocks();
+        await timelockManager
+          .connect(roles.dao)
+          .updateApi3Pool(api3Pool.address);
+        const indNonExistentTimelock = timelocks.length;
+        await expect(
+          timelockManager
+            .connect(roles.owner1)
+            .withdrawToPool(
+              indNonExistentTimelock,
+              api3Pool.address,
+              roles.owner1._address
+            )
+        ).to.be.revertedWith("No such timelock exists");
       });
     });
   });

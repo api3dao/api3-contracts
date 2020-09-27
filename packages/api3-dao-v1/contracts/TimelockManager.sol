@@ -287,6 +287,7 @@ contract TimelockManager is Ownable, ITimelockManager {
     /// @return owner Owner of tokens
     /// @return amount Amount of tokens
     /// @return releaseTime Release time
+    /// @return reversible Flag indicating if the timelock is reversible
     function getTimelock(uint256 indTimelock)
         external
         view
@@ -294,13 +295,15 @@ contract TimelockManager is Ownable, ITimelockManager {
         returns (
             address owner,
             uint256 amount,
-            uint256 releaseTime
+            uint256 releaseTime,
+            bool reversible
             )
     {
         Timelock storage timelock = timelocks[indTimelock];
         owner = timelock.owner;
         amount = timelock.amount;
         releaseTime = timelock.releaseTime;
+        reversible = timelock.reversible;
     }
 
     /// @notice Returns the details of all timelocks
@@ -313,6 +316,8 @@ contract TimelockManager is Ownable, ITimelockManager {
     /// @return owners Owners of tokens
     /// @return amounts Amounts of tokens
     /// @return releaseTimes Release times
+    /// @return reversibles Array of flags indicating if the timelocks are
+    /// reversible
     function getTimelocks()
         external
         view
@@ -320,18 +325,21 @@ contract TimelockManager is Ownable, ITimelockManager {
         returns (
             address[] memory owners,
             uint256[] memory amounts,
-            uint256[] memory releaseTimes
+            uint256[] memory releaseTimes,
+            bool[] memory reversibles
             )
     {
         owners = new address[](noTimelocks);
         amounts = new uint256[](noTimelocks);
         releaseTimes = new uint256[](noTimelocks);
+        reversibles = new bool[](noTimelocks);
         for (uint256 ind = 0; ind < noTimelocks; ind++)
         {
             Timelock storage timelock = timelocks[ind];
             owners[ind] = timelock.owner;
             amounts[ind] = timelock.amount;
             releaseTimes[ind] = timelock.releaseTime;
+            reversibles[ind] = timelock.reversible;
         }
     }
 }

@@ -66,7 +66,8 @@ interface ITimelockManager {
         returns (
             address owner,
             uint256 amount,
-            uint256 releaseTime
+            uint256 releaseTime,
+            bool reversibles
             );
 
     function getTimelocks()
@@ -75,6 +76,7 @@ interface ITimelockManager {
         returns (
             address[] memory owners,
             uint256[] memory amounts,
-            uint256[] memory releaseTimes
+            uint256[] memory releaseTimes,
+            bool[] memory reversibles
             );
 }
