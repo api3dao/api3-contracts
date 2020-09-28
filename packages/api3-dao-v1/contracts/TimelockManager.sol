@@ -119,17 +119,13 @@ contract TimelockManager is Ownable, ITimelockManager {
         external
         override
         onlyOwner
+        onlyIfParameterLengthIsShortEnough(owners.length)
     {
         require(
             owners.length == amounts.length
                 && owners.length == releaseTimes.length
                 && owners.length == reversibles.length,
             "Lengths of parameters do not match"
-            );
-        // 30 elements cost slightly more than 3,000,000 in gas
-        require(
-            owners.length <= 30,
-            "Parameters are longer than 30"
             );
         for (uint256 ind = 0; ind < owners.length; ind++)
         {
@@ -148,15 +144,9 @@ contract TimelockManager is Ownable, ITimelockManager {
         public
         override
         onlyOwner
+        onlyIfTimelockWithIndexExists(indTimelock)
+        onlyIfDestinationIsValid(destination)
     {
-        require(
-            indTimelock < noTimelocks,
-            "No such timelock exists"
-            );
-        require(
-            destination != address(0),
-            "Cannot withdraw to address 0"
-            );
         Timelock memory timelock = timelocks[indTimelock];
         require(
             timelock.reversible,
@@ -183,12 +173,8 @@ contract TimelockManager is Ownable, ITimelockManager {
         external
         override
         onlyOwner
+        onlyIfParameterLengthIsShortEnough(indTimelocks.length)
     {
-        // Use the same limit as transferAndLockMultiple() for consistency
-        require(
-            indTimelocks.length <= 30,
-            "Parameters are longer than 30"
-            );
         for (uint256 ind = 0; ind < indTimelocks.length; ind++)
         {
             reverseTimelock(indTimelocks[ind], destination);
@@ -205,15 +191,9 @@ contract TimelockManager is Ownable, ITimelockManager {
         )
         external
         override
+        onlyIfTimelockWithIndexExists(indTimelock)
+        onlyIfDestinationIsValid(destination)
     {
-        require(
-            indTimelock < noTimelocks,
-            "No such timelock exists"
-            );
-        require(
-            destination != address(0),
-            "Cannot withdraw to address 0"
-            );
         Timelock memory timelock = timelocks[indTimelock];
         require(
             timelock.amount != 0,
@@ -247,11 +227,8 @@ contract TimelockManager is Ownable, ITimelockManager {
         )
         external
         override
+        onlyIfTimelockWithIndexExists(indTimelock)
     {
-        require(
-            indTimelock < noTimelocks,
-            "No such timelock exists"
-            );
         require(
             beneficiary != address(0),
             "Cannot withdraw to benefit address 0"
@@ -270,7 +247,7 @@ contract TimelockManager is Ownable, ITimelockManager {
             msg.sender == timelock.owner,
             "Only the owner of the timelock can withdraw from it"
             );
-        // We deliberately skip checking for timelock maturity
+        // Do not check if the timelock has matured
         delete timelocks[indTimelock].amount;
         api3Token.approve(address(api3Pool), timelock.amount);
         // If (now > timelock.releaseTime), the beneficiary can immediately
@@ -292,6 +269,7 @@ contract TimelockManager is Ownable, ITimelockManager {
         external
         view
         override
+        onlyIfTimelockWithIndexExists(indTimelock)
         returns (
             address owner,
             uint256 amount,
@@ -341,5 +319,35 @@ contract TimelockManager is Ownable, ITimelockManager {
             releaseTimes[ind] = timelock.releaseTime;
             reversibles[ind] = timelock.reversible;
         }
+    }
+
+    /// @dev Reverts if a timelock with index indTimelock does not exist
+    modifier onlyIfTimelockWithIndexExists(uint256 indTimelock)
+    {
+        require(
+            indTimelock < noTimelocks,
+            "No such timelock exists"
+            );
+        _;
+    }
+
+    /// @dev Reverts if the parameter array is longer than 30
+    modifier onlyIfParameterLengthIsShortEnough(uint256 parameterLength)
+    {
+        require(
+            parameterLength <= 30,
+            "Parameters are longer than 30"
+            );
+        _;
+    }
+
+    /// @dev Reverts if the destination is address(0)
+    modifier onlyIfDestinationIsValid(address destination)
+    {
+        require(
+            destination != address(0),
+            "Cannot withdraw to address 0"
+            );
+        _;
     }
 }
