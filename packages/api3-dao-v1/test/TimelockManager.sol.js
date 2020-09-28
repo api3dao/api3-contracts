@@ -340,9 +340,13 @@ describe("reverseTimelock", function () {
         );
         const previousBalance = await api3Token.balanceOf(roles.dao._address);
         // Have the DAO reverse the timelock and receive the tokens
-        await timelockManager
-          .connect(roles.dao)
-          .reverseTimelock(indTimelock, roles.dao._address);
+        await expect(
+          timelockManager
+            .connect(roles.dao)
+            .reverseTimelock(indTimelock, roles.dao._address)
+        )
+          .to.emit(timelockManager, "TimelockReversed")
+          .withArgs(indTimelock, roles.dao._address);
         // Check if the withdrawal was successful
         const afterBalance = await api3Token.balanceOf(roles.dao._address);
         expect(afterBalance.sub(previousBalance)).to.equal(
@@ -573,9 +577,13 @@ describe("withdraw", function () {
           );
           const previousBalance = await api3Token.balanceOf(ownerRole._address);
           // Have the owner redeem the tokens to their own address
-          await timelockManager
-            .connect(ownerRole)
-            .withdraw(indTimelock, ownerRole._address);
+          await expect(
+            timelockManager
+              .connect(ownerRole)
+              .withdraw(indTimelock, ownerRole._address)
+          )
+            .to.emit(timelockManager, "Withdrawn")
+            .withArgs(indTimelock, ownerRole._address);
           // Check if the withdrawal was successful
           const afterBalance = await api3Token.balanceOf(ownerRole._address);
           expect(afterBalance.sub(previousBalance)).to.equal(
@@ -736,6 +744,16 @@ describe("withdrawToPool", function () {
           let tx = await timelockManager
             .connect(ownerRole)
             .withdrawToPool(indTimelock, api3Pool.address, ownerRole._address);
+          await utils.verifyLog(
+            timelockManager,
+            tx,
+            "WithdrawnToPool(uint256,address,address)",
+            {
+              indTimelock: indTimelock,
+              api3PoolAddress: api3Pool.address,
+              beneficiary: ownerRole._address,
+            }
+          );
           const vestingEpoch = await api3Pool.getEpochIndex(
             retrievedTimelocks.releaseTimes[indTimelock]
           );

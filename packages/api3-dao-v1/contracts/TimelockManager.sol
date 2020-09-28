@@ -159,6 +159,10 @@ contract TimelockManager is Ownable, ITimelockManager {
         // Do not check if msg.sender is the timelock owner
         // Do not check if the timelock has matured
         delete timelocks[indTimelock].amount;
+        emit TimelockReversed(
+            indTimelock,
+            destination
+            );
         api3Token.transfer(destination, timelock.amount);
     }
 
@@ -208,6 +212,10 @@ contract TimelockManager is Ownable, ITimelockManager {
             "Timelock has not matured yet"
             );
         delete timelocks[indTimelock].amount;
+        emit Withdrawn(
+            indTimelock,
+            destination
+            );
         api3Token.transfer(destination, timelock.amount);
     }
 
@@ -249,6 +257,11 @@ contract TimelockManager is Ownable, ITimelockManager {
             );
         // Do not check if the timelock has matured
         delete timelocks[indTimelock].amount;
+        emit WithdrawnToPool(
+            indTimelock,
+            api3PoolAddress,
+            beneficiary
+            );
         api3Token.approve(address(api3Pool), timelock.amount);
         // If (now > timelock.releaseTime), the beneficiary can immediately
         // have their tokens vested at the pool with an additional transaction

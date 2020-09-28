@@ -6,12 +6,28 @@ interface ITimelockManager {
     event Api3PoolUpdated(address api3PoolAddress);
 
     event TransferredAndLocked(
-        uint256 indexed timelockInd,
+        uint256 indexed indTimelock,
         address source,
         address indexed owner,
         uint256 amount,
         uint256 releaseTime,
         bool reversible
+    );
+
+    event TimelockReversed(
+        uint256 indexed indTimelock,
+        address destination
+    );
+
+    event Withdrawn(
+        uint256 indexed indTimelock,
+        address destination
+    );
+
+    event WithdrawnToPool(
+        uint256 indexed indTimelock,
+        address api3PoolAddress,
+        address beneficiary
     );
 
     function updateApi3Pool(address api3PoolAddress)
