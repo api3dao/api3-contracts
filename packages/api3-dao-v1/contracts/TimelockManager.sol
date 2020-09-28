@@ -256,7 +256,7 @@ contract TimelockManager is Ownable, ITimelockManager {
             address(this),
             timelock.amount,
             beneficiary,
-            api3Pool.getEpochIndex(timelock.releaseTime)
+            timelock.releaseTime
             );
     }
 

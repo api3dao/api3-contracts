@@ -47,7 +47,7 @@ interface ITransferUtils is IPoolUtils {
         address sourceAddress,
         uint256 amount,
         address userAddress,
-        uint256 vestingEpoch
+        uint256 vestingTimestamp
         )
         external;
 
