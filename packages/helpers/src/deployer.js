@@ -3,7 +3,7 @@ async function deployToken(deployer, tokenOwner) {
     "Api3Token",
     deployer
   );
-  const api3Token = await api3TokenFactory.deploy(tokenOwner);
+  const api3Token = await api3TokenFactory.deploy(tokenOwner, tokenOwner);
   return api3Token;
 }
 
