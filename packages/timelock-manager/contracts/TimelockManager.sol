@@ -101,7 +101,10 @@ contract TimelockManager is Ownable, ITimelockManager {
             reversible
             );
         noTimelocks = noTimelocks.add(1);
-        api3Token.transferFrom(source, address(this), amount);
+        require(
+            api3Token.transferFrom(source, address(this), amount),
+            "API3 token transferFrom failed"
+            );
     }
 
     /// @notice Convenience function that calls transferAndLock() multiple times
@@ -166,7 +169,10 @@ contract TimelockManager is Ownable, ITimelockManager {
             indTimelock,
             destination
             );
-        api3Token.transfer(destination, timelock.amount);
+        require(
+            api3Token.transfer(destination, timelock.amount),
+            "API3 token transfer failed"
+            );
     }
 
     /// @notice Convenience function that calls reverseTimelock() multiple times
@@ -219,7 +225,10 @@ contract TimelockManager is Ownable, ITimelockManager {
             indTimelock,
             destination
             );
-        api3Token.transfer(destination, timelock.amount);
+        require(
+            api3Token.transfer(destination, timelock.amount),
+            "API3 token transfer failed"
+            );
     }
 
     /// @notice Used by the owner to withdraw their tokens kept by a specific
