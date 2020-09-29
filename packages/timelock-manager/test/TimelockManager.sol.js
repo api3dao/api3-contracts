@@ -112,11 +112,7 @@ beforeEach(async () => {
       reversible: true,
     },
   ];
-  api3Token = await deployer.deployToken(
-    roles.deployer,
-    roles.dao._address,
-    roles.dao._address
-  );
+  api3Token = await deployer.deployToken(roles.deployer, roles.dao._address);
   timelockManager = await deployer.deployTimelockManager(
     roles.deployer,
     roles.dao._address,

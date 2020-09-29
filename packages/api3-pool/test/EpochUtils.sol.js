@@ -14,7 +14,6 @@ describe("EpochUtils", function () {
     };
     const api3Token = await deployer.deployToken(
       roles.owner,
-      roles.owner._address,
       roles.owner._address
     );
     api3Pool = await deployer.deployPool(

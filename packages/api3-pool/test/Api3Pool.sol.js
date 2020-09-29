@@ -16,11 +16,7 @@ describe("Api3Pool", function () {
       claimsManager: accounts[2],
       randomPerson: accounts[9],
     };
-    api3Token = await deployer.deployToken(
-      roles.owner,
-      roles.owner._address,
-      roles.owner._address
-    );
+    api3Token = await deployer.deployToken(roles.owner, roles.owner._address);
     api3Pool = await deployer.deployPool(
       roles.owner,
       api3Token.address,

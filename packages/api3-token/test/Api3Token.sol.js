@@ -9,15 +9,10 @@ beforeEach(async () => {
   roles = {
     deployer: accounts[0],
     dao: accounts[1],
-    daoBank: accounts[2],
-    minter: accounts[3],
+    minter: accounts[2],
     randomPerson: accounts[9],
   };
-  api3Token = await deployer.deployToken(
-    roles.deployer,
-    roles.dao._address,
-    roles.daoBank._address
-  );
+  api3Token = await deployer.deployToken(roles.deployer, roles.dao._address);
 });
 
 describe("constructor", function () {
@@ -28,8 +23,8 @@ describe("constructor", function () {
     const totalSupply = await api3Token.totalSupply();
     expect(totalSupply).to.equal(expectedTotalSupply);
 
-    const daoBankBalance = await api3Token.balanceOf(roles.daoBank._address);
-    expect(daoBankBalance).to.equal(expectedTotalSupply);
+    const daoBalance = await api3Token.balanceOf(roles.dao._address);
+    expect(daoBalance).to.equal(expectedTotalSupply);
   });
 });
 
