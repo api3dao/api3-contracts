@@ -1,5 +1,5 @@
 {
-  "name": "@api3-contracts/api3-dao-v1",
+  "name": "@api3-contracts/timelock-manager",
   "version": "0.1.0",
   "scripts": {
     "copy-artifacts:api3-token": "cp -a ../api3-token/artifacts/. ./artifacts/",

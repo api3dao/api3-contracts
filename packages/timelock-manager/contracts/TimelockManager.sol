@@ -17,6 +17,9 @@ import "./interfaces/ITimelockManager.sol";
 /// owners can transfer their tokens from TimelockManager to api3Pool before
 /// releaseTime. These tokens will be not be withdrawable from api3Pool until
 /// their respective releaseTimes.
+/// API3 DAO can also reverse timelocks (i.e., annul them) and send the tokens
+/// to a destination of its choice. Note that timelocks can be specified not to
+/// be reversible.
 contract TimelockManager is Ownable, ITimelockManager {
     using SafeMath for uint256;
 
