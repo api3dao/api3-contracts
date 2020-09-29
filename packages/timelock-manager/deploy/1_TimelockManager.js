@@ -1,4 +1,3 @@
-/* global getChainId */
 module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
@@ -14,7 +13,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   };
 
   const chainId = await getChainId();
-  const timelockManager = await deploy("Api3Token", {
+  const timelockManager = await deploy("TimelockManager", {
     args: [api3TokenAddresses[chainId], api3DaoAddresses[chainId]],
     from: deployer,
   });

@@ -8,7 +8,8 @@ module.exports = {
       "describe": false,
       "ethers": false,
       "it": false,
-      "context": false
+      "context": false,
+      "getChainId": false
     },
     "parserOptions": {
         "ecmaVersion": 11,
