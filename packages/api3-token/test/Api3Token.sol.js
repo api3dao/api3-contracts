@@ -110,3 +110,27 @@ describe("mint", function () {
     });
   });
 });
+
+describe("transfer ownership", function () {
+  context("If the caller is the owner", async function () {
+    it("removes old owner minting permission, sets new owner minting permission", async function () {
+      await expect(
+        api3Token
+          .connect(roles.dao)
+          .transferOwnership(roles.randomPerson._address)
+      )
+        .to.emit(api3Token, "MinterStatusUpdated")
+        .withArgs(roles.dao._address, false)
+        .to.emit(api3Token, "MinterStatusUpdated")
+        .withArgs(roles.randomPerson._address, true);
+    });
+  });
+
+  context("If the caller is not the owner", async function () {
+    it("reverts", async function () {
+      await expect(
+        api3Token.transferOwnership(roles.randomPerson._address)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+});
