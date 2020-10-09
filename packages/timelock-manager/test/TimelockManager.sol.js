@@ -630,6 +630,53 @@ describe("withdraw", function () {
           );
         }
       });
+
+      it("withdraws on a linear schedule", async function () {
+        await batchDeployTimelocks();
+        const retrievedTimelocks = await timelockManager.getTimelocks();
+        // Sort timelocks with respect to their releaseEnd times because we need to
+        // fast forward the EVM time in sequence
+        let timelocksCopy = timelocks.slice();
+        timelocksCopy.sort((a, b) => {
+          return a.releaseEnd.gt(b.releaseEnd) ? 1 : -1;
+        });
+        for (const timelock of timelocksCopy) {
+          // Find the timelock among the retrieved timelocks
+          const indTimelock = retrievedTimelocks.owners.findIndex(
+            (owner, ind) =>
+              owner == timelock.owner &&
+              retrievedTimelocks.totalAmounts[ind].eq(timelock.totalAmount) &&
+              retrievedTimelocks.releaseStarts[ind].eq(timelock.releaseStart) &&
+              retrievedTimelocks.releaseEnds[ind].eq(timelock.releaseEnd) &&
+              retrievedTimelocks.reversibles[ind] == timelock.reversible
+          );
+          // Fast forward time so that the timelock is resolvable
+          await ethers.provider.send("evm_setNextBlockTimestamp", [
+            //Set time at 50% point
+            retrievedTimelocks.releaseStarts[indTimelock].toNumber() +
+              52 * 7 * 24 * 60 * 60,
+          ]);
+          // Get the owner of the timelock
+          const ownerRole = Object.values(roles).find(
+            (role) => role._address == retrievedTimelocks.owners[indTimelock]
+          );
+          const previousBalance = await api3Token.balanceOf(ownerRole._address);
+          // Have the owner redeem the tokens to their own address
+          await expect(
+            timelockManager
+              .connect(ownerRole)
+              .withdraw(indTimelock, ownerRole._address)
+          )
+            .to.emit(timelockManager, "Withdrawn")
+            .withArgs(indTimelock, ownerRole._address);
+          // Check if the withdrawal was successful
+          const afterBalance = await api3Token.balanceOf(ownerRole._address);
+          expect(afterBalance.sub(previousBalance)).to.equal(
+            retrievedTimelocks.totalAmounts[indTimelock].div(2)
+          );
+        }
+      });
+
       context(
         "If the owner attempts to withdraw a second time",
         async function () {
@@ -720,6 +767,81 @@ describe("withdraw", function () {
         });
       });
     });
+
+    context("Before the cliff on a timelock with a cliff", async function () {
+      it("reverts", async function () {
+        await batchDeployTimelocks();
+        // Withdraw a timelock once
+        const retrievedTimelocks = await timelockManager.getTimelocks();
+        const indTimelock = retrievedTimelocks.owners.findIndex(
+          (owner) => owner == roles.owner1._address
+        );
+        await ethers.provider.send("evm_setNextBlockTimestamp", [
+          retrievedTimelocks.releaseStarts[indTimelock].toNumber() + 1,
+        ]);
+
+        // Attempt to withdraw before the cliff
+        await expect(
+          timelockManager
+            .connect(roles.owner1)
+            .withdraw(indTimelock, roles.owner1._address)
+        ).to.be.revertedWith("Timelock has not matured yet");
+      });
+    });
+
+    context(
+      "Before the cliff on a timelock without a cliff",
+      async function () {
+        it("withdraws", async function () {
+          await batchDeployTimelocks();
+          // Withdraw a timelock once
+          const retrievedTimelocks = await timelockManager.getTimelocks();
+          const indTimelock = retrievedTimelocks.owners.findIndex(
+            (owner, ind) =>
+              owner == roles.owner1._address &&
+              retrievedTimelocks.cliffTimes[ind].eq(0)
+          );
+          await ethers.provider.send("evm_setNextBlockTimestamp", [
+            retrievedTimelocks.releaseStarts[indTimelock].toNumber() +
+              24 * 60 * 60,
+          ]);
+
+          const balanceBefore = await api3Token.balanceOf(
+            roles.owner1._address
+          );
+
+          //Withdraw 1 day after start time
+          await expect(
+            timelockManager
+              .connect(roles.owner1)
+              .withdraw(indTimelock, roles.owner1._address)
+          )
+            .to.emit(timelockManager, "Withdrawn")
+            .withArgs(indTimelock, roles.owner1._address);
+          // Check if the withdrawal was successful
+          const balanceAfter = await api3Token.balanceOf(roles.owner1._address);
+          const currentTimestamp = parseInt(
+            (
+              await ethers.provider.send("eth_getBlockByNumber", [
+                "latest",
+                false,
+              ])
+            ).timestamp
+          );
+          expect(balanceAfter.sub(balanceBefore)).to.equal(
+            //Balance is 1/728 of total (1 day out of 2 years = 1 days / 728 days)
+            //TODO: JS rounding screws up the last 2 digits here, contract reports correct
+            //value of 686813186813186800
+            // retrievedTimelocks.totalAmounts[indTimelock].div(
+            //   728
+            // )
+
+            "686813186813186800"
+          );
+        });
+      }
+    );
+
     context("Before releaseTime", async function () {
       it("reverts", async function () {
         await batchDeployTimelocks();

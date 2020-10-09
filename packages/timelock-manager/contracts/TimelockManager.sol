@@ -241,15 +241,11 @@ contract TimelockManager is Ownable, ITimelockManager {
             withdrawableAmount = timelock.totalAmount.sub(timelock.releasedAmount);
         } else {
             //Release linear
-            uint256 percentComplete = ((now.sub(timelock.releaseStart)).mul(10**18))
+            uint256 percentComplete = ((now.sub(timelock.releaseStart)).mul(10**19))
                 .div(timelock.releaseEnd.sub(timelock.releaseStart));
             withdrawableAmount = ((timelock.totalAmount.mul(percentComplete))
-                .div(10**18)).sub(timelock.releasedAmount);
+                .div(10**19)).sub(timelock.releasedAmount);
         }
-        // uint256 tokensPerSecond = timelock.totalAmount.div(timelock.releaseEnd.sub(timelock.releaseStart));
-        // uint256 withdrawableAmount = now > timelock.releaseEnd ?
-        //     (timelock.releaseEnd.sub(timelock.releaseStart).mul(tokensPerSecond)).sub(timelock.releasedAmount) :
-        //     (now.sub(timelock.releaseStart).mul(tokensPerSecond)).sub(timelock.releasedAmount);
 
         timelocks[indTimelock].releasedAmount = timelock.releasedAmount.add(withdrawableAmount);
         emit Withdrawn(
