@@ -57,6 +57,7 @@ async function timelockPrivate() {
     amounts,
     releaseTimes,
     Array(9).fill(false),
+    Array(9).fill(true), //private timelocks are vested
     { gasLimit: 9000000 }
   );
 }

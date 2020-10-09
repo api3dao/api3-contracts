@@ -10,8 +10,9 @@ interface ITimelockManager {
         address source,
         address indexed owner,
         uint256 amount,
-        uint256 releaseTime,
-        bool reversible
+        uint256 releaseStart,
+        bool reversible,
+        bool cliff
     );
 
     event TimelockReversed(
@@ -37,8 +38,9 @@ interface ITimelockManager {
         address source,
         address owner,
         uint256 amount,
-        uint256 releaseTime,
-        bool reversible
+        uint256 releaseStart,
+        bool reversible,
+        bool cliff
         )
         external;
 
@@ -47,7 +49,8 @@ interface ITimelockManager {
         address[] calldata owners,
         uint256[] calldata amounts,
         uint256[] calldata releaseTimes,
-        bool[] calldata reversibles
+        bool[] calldata reversibles,
+        bool[] calldata cliffs
         )
         external;
 
@@ -81,9 +84,12 @@ interface ITimelockManager {
         view
         returns (
             address owner,
-            uint256 amount,
-            uint256 releaseTime,
-            bool reversibles
+            uint256 totalAmount,
+            uint256 releasedAmount,
+            uint256 releaseStart,
+            uint256 releaseEnd,
+            bool reversibles,
+            uint256 cliffTime
             );
 
     function getTimelocks()
@@ -91,8 +97,11 @@ interface ITimelockManager {
         view
         returns (
             address[] memory owners,
-            uint256[] memory amounts,
-            uint256[] memory releaseTimes,
-            bool[] memory reversibles
+            uint256[] memory totalAmounts,
+            uint256[] memory releasedAmounts,
+            uint256[] memory releaseStarts,
+            uint256[] memory releaseEnds,
+            bool[] memory reversibles,
+            uint256[] memory cliffTImes
             );
 }

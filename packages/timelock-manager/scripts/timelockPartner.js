@@ -98,6 +98,7 @@ async function timelockPartner() {
     amounts,
     releaseTimes,
     reversibles,
+    Array(9).fill(false), //all partners have no cliff
     { gasLimit: 9000000 }
   );
 }

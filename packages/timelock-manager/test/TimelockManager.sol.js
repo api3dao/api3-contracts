@@ -12,7 +12,7 @@ async function batchDeployTimelocks() {
   await api3Token.connect(roles.dao).approve(
     timelockManager.address,
     timelocks.reduce(
-      (acc, timelock) => acc.add(timelock.amount),
+      (acc, timelock) => acc.add(timelock.totalAmount),
       ethers.BigNumber.from(0)
     )
   );
@@ -20,22 +20,24 @@ async function batchDeployTimelocks() {
   let tx = await timelockManager.connect(roles.dao).transferAndLockMultiple(
     roles.dao._address,
     timelocks.map((timelock) => timelock.owner),
-    timelocks.map((timelock) => timelock.amount),
-    timelocks.map((timelock) => timelock.releaseTime),
-    timelocks.map((timelock) => timelock.reversible)
+    timelocks.map((timelock) => timelock.totalAmount),
+    timelocks.map((timelock) => timelock.releaseStart),
+    timelocks.map((timelock) => timelock.reversible),
+    timelocks.map((timelock) => timelock.cliff)
   );
   // Check that each timelock deployment has emitted its respective event
   for (const timelock of timelocks) {
     await utils.verifyLog(
       timelockManager,
       tx,
-      "TransferredAndLocked(uint256,address,address,uint256,uint256,bool)",
+      "TransferredAndLocked(uint256,address,address,uint256,uint256,bool,bool)",
       {
         source: roles.dao._address,
         owner: timelock.owner,
-        amount: timelock.amount,
-        releaseTime: timelock.releaseTime,
+        amount: timelock.totalAmount,
+        releaseStart: timelock.releaseStart,
         reversible: timelock.reversible,
+        cliff: timelock.cliff,
       }
     );
   }
@@ -45,16 +47,16 @@ async function verifyDeployedTimelocks() {
   // Retrieve all timelocks and check that their number is correct
   const retrievedTimelocks = await timelockManager.getTimelocks();
   expect(retrievedTimelocks.owners.length).to.equal(timelocks.length);
-  expect(retrievedTimelocks.amounts.length).to.equal(timelocks.length);
-  expect(retrievedTimelocks.releaseTimes.length).to.equal(timelocks.length);
+  expect(retrievedTimelocks.totalAmounts.length).to.equal(timelocks.length);
+  expect(retrievedTimelocks.releaseStarts.length).to.equal(timelocks.length);
   expect(retrievedTimelocks.reversibles.length).to.equal(timelocks.length);
   for (const timelock of timelocks) {
     // Search for each timelock among the retrieved timelocks
     const indTimelock = retrievedTimelocks.owners.findIndex(
       (owner, ind) =>
         owner == timelock.owner &&
-        retrievedTimelocks.amounts[ind].eq(timelock.amount) &&
-        retrievedTimelocks.releaseTimes[ind].eq(timelock.releaseTime) &&
+        retrievedTimelocks.totalAmounts[ind].eq(timelock.totalAmount) &&
+        retrievedTimelocks.releaseStarts[ind].eq(timelock.releaseStart) &&
         retrievedTimelocks.reversibles[ind] == timelock.reversible
     );
     expect(indTimelock).to.not.equal(-1);
@@ -63,9 +65,11 @@ async function verifyDeployedTimelocks() {
       indTimelock
     );
     expect(individuallyRetrievedTimelock.owner).to.equal(timelock.owner);
-    expect(individuallyRetrievedTimelock.amount).to.equal(timelock.amount);
-    expect(individuallyRetrievedTimelock.releaseTime).to.equal(
-      timelock.releaseTime
+    expect(individuallyRetrievedTimelock.totalAmount).to.equal(
+      timelock.totalAmount
+    );
+    expect(individuallyRetrievedTimelock.releaseStart).to.equal(
+      timelock.releaseStart
     );
     expect(individuallyRetrievedTimelock.reversible).to.equal(
       timelock.reversible
@@ -89,27 +93,43 @@ beforeEach(async () => {
   timelocks = [
     {
       owner: roles.owner1._address,
-      amount: ethers.utils.parseEther((2e2).toString()),
-      releaseTime: ethers.BigNumber.from(currentTimestamp + 40000),
+      totalAmount: ethers.utils.parseEther((2e2).toString()),
+      releaseStart: ethers.BigNumber.from(currentTimestamp + 40000),
+      releaseEnd: ethers.BigNumber.from(currentTimestamp + 40000).add(
+        104 * 7 * 24 * 60 * 60
+      ),
       reversible: true,
+      cliff: true,
     },
     {
       owner: roles.owner2._address,
-      amount: ethers.utils.parseEther((8e2).toString()),
-      releaseTime: ethers.BigNumber.from(currentTimestamp + 20000),
+      totalAmount: ethers.utils.parseEther((8e2).toString()),
+      releaseStart: ethers.BigNumber.from(currentTimestamp + 20000),
+      releaseEnd: ethers.BigNumber.from(currentTimestamp + 20000).add(
+        104 * 7 * 24 * 60 * 60
+      ),
       reversible: false,
+      cliff: true,
     },
     {
       owner: roles.owner1._address,
-      amount: ethers.utils.parseEther((5e2).toString()),
-      releaseTime: ethers.BigNumber.from(currentTimestamp + 10000),
+      totalAmount: ethers.utils.parseEther((5e2).toString()),
+      releaseStart: ethers.BigNumber.from(currentTimestamp + 10000),
+      releaseEnd: ethers.BigNumber.from(currentTimestamp + 10000).add(
+        104 * 7 * 24 * 60 * 60
+      ),
       reversible: false,
+      cliff: false,
     },
     {
       owner: roles.owner2._address,
-      amount: ethers.utils.parseEther((3e2).toString()),
-      releaseTime: ethers.BigNumber.from(currentTimestamp + 30000),
+      totalAmount: ethers.utils.parseEther((3e2).toString()),
+      releaseStart: ethers.BigNumber.from(currentTimestamp + 30000),
+      releaseEnd: ethers.BigNumber.from(currentTimestamp + 30000).add(
+        104 * 7 * 24 * 60 * 60
+      ),
       reversible: true,
+      cliff: false,
     },
   ];
   api3Token = await deployer.deployToken(roles.deployer, roles.dao._address);
@@ -162,7 +182,7 @@ describe("transferAndLock", function () {
       await api3Token.connect(roles.dao).approve(
         timelockManager.address,
         timelocks.reduce(
-          (acc, timelock) => acc.add(timelock.amount),
+          (acc, timelock) => acc.add(timelock.totalAmount),
           ethers.BigNumber.from(0)
         )
       );
@@ -173,20 +193,22 @@ describe("transferAndLock", function () {
           .transferAndLock(
             roles.dao._address,
             timelock.owner,
-            timelock.amount,
-            timelock.releaseTime,
-            timelock.reversible
+            timelock.totalAmount,
+            timelock.releaseStart,
+            timelock.reversible,
+            timelock.cliff
           );
         await utils.verifyLog(
           timelockManager,
           tx,
-          "TransferredAndLocked(uint256,address,address,uint256,uint256,bool)",
+          "TransferredAndLocked(uint256,address,address,uint256,uint256,bool,bool)",
           {
             source: roles.dao._address,
             owner: timelock.owner,
-            amount: timelock.amount,
-            releaseTime: timelock.releaseTime,
+            amount: timelock.totalAmount,
+            releaseStart: timelock.releaseStart,
             reversible: timelock.reversible,
+            cliff: timelock.cliff,
           }
         );
       }
@@ -201,8 +223,9 @@ describe("transferAndLock", function () {
               roles.dao._address,
               timelocks[0].owner,
               0,
-              timelocks[0].releaseTime,
-              timelocks[0].reversible
+              timelocks[0].releaseStart,
+              timelocks[0].reversible,
+              timelocks[0].cliff
             )
         ).to.be.revertedWith("Transferred and locked amount cannot be 0");
       });
@@ -214,7 +237,7 @@ describe("transferAndLock", function () {
       await api3Token.connect(roles.dao).transfer(
         roles.randomPerson._address,
         timelocks.reduce(
-          (acc, timelock) => acc.add(timelock.amount),
+          (acc, timelock) => acc.add(timelock.totalAmount),
           ethers.BigNumber.from(0)
         )
       );
@@ -222,7 +245,7 @@ describe("transferAndLock", function () {
       await api3Token.connect(roles.randomPerson).approve(
         timelockManager.address,
         timelocks.reduce(
-          (acc, timelock) => acc.add(timelock.amount),
+          (acc, timelock) => acc.add(timelock.totalAmount),
           ethers.BigNumber.from(0)
         )
       );
@@ -232,9 +255,10 @@ describe("transferAndLock", function () {
           .transferAndLock(
             roles.randomPerson._address,
             timelocks[0].owner,
-            timelocks[0].amount,
-            timelocks[0].releaseTime,
-            timelocks[0].reversible
+            timelocks[0].totalAmount,
+            timelocks[0].releaseStart,
+            timelocks[0].reversible,
+            timelocks[0].cliff
           )
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
@@ -253,7 +277,7 @@ describe("transferAndLockMultiple", function () {
         await api3Token.connect(roles.dao).approve(
           timelockManager.address,
           timelocks.reduce(
-            (acc, timelock) => acc.add(timelock.amount),
+            (acc, timelock) => acc.add(timelock.totalAmount),
             ethers.BigNumber.from(0)
           )
         );
@@ -261,9 +285,10 @@ describe("transferAndLockMultiple", function () {
           timelockManager.connect(roles.dao).transferAndLockMultiple(
             roles.dao._address,
             [timelocks[0].owner],
-            timelocks.map((timelock) => timelock.amount),
-            timelocks.map((timelock) => timelock.releaseTime),
-            timelocks.map((timelock) => timelock.reversible)
+            timelocks.map((timelock) => timelock.totalAmount),
+            timelocks.map((timelock) => timelock.releaseStart),
+            timelocks.map((timelock) => timelock.reversible),
+            timelocks.map((timelock) => timelock.cliff)
           )
         ).to.be.revertedWith("Lengths of parameters do not match");
       });
@@ -276,9 +301,10 @@ describe("transferAndLockMultiple", function () {
             .transferAndLockMultiple(
               roles.dao._address,
               Array(31).fill(timelocks[0].owner),
-              Array(31).fill(timelocks[0].amount),
-              Array(31).fill(timelocks[0].releaseTime),
-              Array(31).fill(timelocks[0].reversible)
+              Array(31).fill(timelocks[0].totalAmount),
+              Array(31).fill(timelocks[0].releaseStart),
+              Array(31).fill(timelocks[0].reversible),
+              Array(31).fill(timelocks[0].cliff)
             )
         ).to.be.revertedWith("Parameters are longer than 30");
       });
@@ -290,7 +316,7 @@ describe("transferAndLockMultiple", function () {
       await api3Token.connect(roles.dao).transfer(
         roles.randomPerson._address,
         timelocks.reduce(
-          (acc, timelock) => acc.add(timelock.amount),
+          (acc, timelock) => acc.add(timelock.totalAmount),
           ethers.BigNumber.from(0)
         )
       );
@@ -298,7 +324,7 @@ describe("transferAndLockMultiple", function () {
       await api3Token.connect(roles.randomPerson).approve(
         timelockManager.address,
         timelocks.reduce(
-          (acc, timelock) => acc.add(timelock.amount),
+          (acc, timelock) => acc.add(timelock.totalAmount),
           ethers.BigNumber.from(0)
         )
       );
@@ -306,9 +332,10 @@ describe("transferAndLockMultiple", function () {
         timelockManager.connect(roles.randomPerson).transferAndLockMultiple(
           roles.dao._address,
           timelocks.map((timelock) => timelock.owner),
-          timelocks.map((timelock) => timelock.amount),
-          timelocks.map((timelock) => timelock.releaseTime),
-          timelocks.map((timelock) => timelock.reversible)
+          timelocks.map((timelock) => timelock.totalAmount),
+          timelocks.map((timelock) => timelock.releaseStart),
+          timelocks.map((timelock) => timelock.reversible),
+          timelocks.map((timelock) => timelock.cliff)
         )
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
@@ -328,9 +355,11 @@ describe("reverseTimelock", function () {
         const indTimelock = retrievedTimelocks.owners.findIndex(
           (owner, ind) =>
             owner == reversibleTimelock.owner &&
-            retrievedTimelocks.amounts[ind].eq(reversibleTimelock.amount) &&
-            retrievedTimelocks.releaseTimes[ind].eq(
-              reversibleTimelock.releaseTime
+            retrievedTimelocks.totalAmounts[ind].eq(
+              reversibleTimelock.totalAmount
+            ) &&
+            retrievedTimelocks.releaseStarts[ind].eq(
+              reversibleTimelock.releaseStart
             ) &&
             retrievedTimelocks.reversibles[ind] == reversibleTimelock.reversible
         );
@@ -346,7 +375,7 @@ describe("reverseTimelock", function () {
         // Check if the withdrawal was successful
         const afterBalance = await api3Token.balanceOf(roles.dao._address);
         expect(afterBalance.sub(previousBalance)).to.equal(
-          retrievedTimelocks.amounts[indTimelock]
+          retrievedTimelocks.totalAmounts[indTimelock]
         );
       }
     });
@@ -362,11 +391,11 @@ describe("reverseTimelock", function () {
           const indTimelock = retrievedTimelocks.owners.findIndex(
             (owner, ind) =>
               owner == reversibleTimelocks[0].owner &&
-              retrievedTimelocks.amounts[ind].eq(
-                reversibleTimelocks[0].amount
+              retrievedTimelocks.totalAmounts[ind].eq(
+                reversibleTimelocks[0].totalAmount
               ) &&
-              retrievedTimelocks.releaseTimes[ind].eq(
-                reversibleTimelocks[0].releaseTime
+              retrievedTimelocks.releaseStarts[ind].eq(
+                reversibleTimelocks[0].releaseStart
               ) &&
               retrievedTimelocks.reversibles[ind] ==
                 reversibleTimelocks[0].reversible
@@ -392,9 +421,11 @@ describe("reverseTimelock", function () {
         const indTimelock = retrievedTimelocks.owners.findIndex(
           (owner, ind) =>
             owner == reversibleTimelocks[0].owner &&
-            retrievedTimelocks.amounts[ind].eq(reversibleTimelocks[0].amount) &&
-            retrievedTimelocks.releaseTimes[ind].eq(
-              reversibleTimelocks[0].releaseTime
+            retrievedTimelocks.totalAmounts[ind].eq(
+              reversibleTimelocks[0].totalAmount
+            ) &&
+            retrievedTimelocks.releaseStarts[ind].eq(
+              reversibleTimelocks[0].releaseStart
             ) &&
             retrievedTimelocks.reversibles[ind] ==
               reversibleTimelocks[0].reversible
@@ -416,9 +447,11 @@ describe("reverseTimelock", function () {
         const indTimelock = retrievedTimelocks.owners.findIndex(
           (owner, ind) =>
             owner == reversibleTimelocks[0].owner &&
-            retrievedTimelocks.amounts[ind].eq(reversibleTimelocks[0].amount) &&
-            retrievedTimelocks.releaseTimes[ind].eq(
-              reversibleTimelocks[0].releaseTime
+            retrievedTimelocks.totalAmounts[ind].eq(
+              reversibleTimelocks[0].totalAmount
+            ) &&
+            retrievedTimelocks.releaseStarts[ind].eq(
+              reversibleTimelocks[0].releaseStart
             ) &&
             retrievedTimelocks.reversibles[ind] ==
               reversibleTimelocks[0].reversible
@@ -440,15 +473,18 @@ describe("reverseTimelock", function () {
         const indTimelock = retrievedTimelocks.owners.findIndex(
           (owner, ind) =>
             owner == roles.owner1._address &&
-            retrievedTimelocks.amounts[ind].eq(reversibleTimelocks[0].amount) &&
-            retrievedTimelocks.releaseTimes[ind].eq(
-              reversibleTimelocks[0].releaseTime
+            retrievedTimelocks.totalAmounts[ind].eq(
+              reversibleTimelocks[0].totalAmount
+            ) &&
+            retrievedTimelocks.releaseStarts[ind].eq(
+              reversibleTimelocks[0].releaseStart
             ) &&
             retrievedTimelocks.reversibles[ind] ==
               reversibleTimelocks[0].reversible
         );
         await ethers.provider.send("evm_setNextBlockTimestamp", [
-          retrievedTimelocks.releaseTimes[indTimelock].toNumber() + 1,
+          //Timelock fully claimable after 104 weeks (2 years)
+          retrievedTimelocks.releaseEnds[indTimelock].toNumber() + 1,
         ]);
         await timelockManager
           .connect(roles.owner1)
@@ -471,9 +507,11 @@ describe("reverseTimelock", function () {
       const indTimelock = retrievedTimelocks.owners.findIndex(
         (owner, ind) =>
           owner == reversibleTimelocks[0].owner &&
-          retrievedTimelocks.amounts[ind].eq(reversibleTimelocks[0].amount) &&
-          retrievedTimelocks.releaseTimes[ind].eq(
-            reversibleTimelocks[0].releaseTime
+          retrievedTimelocks.totalAmounts[ind].eq(
+            reversibleTimelocks[0].totalAmount
+          ) &&
+          retrievedTimelocks.releaseStarts[ind].eq(
+            reversibleTimelocks[0].releaseStart
           ) &&
           retrievedTimelocks.reversibles[ind] ==
             reversibleTimelocks[0].reversible
@@ -502,14 +540,18 @@ describe("reverseTimelockMultiple", function () {
         const indTimelock = retrievedTimelocks.owners.findIndex(
           (owner, ind) =>
             owner == reversibleTimelock.owner &&
-            retrievedTimelocks.amounts[ind].eq(reversibleTimelock.amount) &&
-            retrievedTimelocks.releaseTimes[ind].eq(
-              reversibleTimelock.releaseTime
+            retrievedTimelocks.totalAmounts[ind].eq(
+              reversibleTimelock.totalAmount
+            ) &&
+            retrievedTimelocks.releaseStarts[ind].eq(
+              reversibleTimelock.releaseStart
             ) &&
             retrievedTimelocks.reversibles[ind] == reversibleTimelock.reversible
         );
         reversibleTimelockInds.push(indTimelock);
-        totalAmount = totalAmount.add(retrievedTimelocks.amounts[indTimelock]);
+        totalAmount = totalAmount.add(
+          retrievedTimelocks.totalAmounts[indTimelock]
+        );
       }
       const previousBalance = await api3Token.balanceOf(roles.dao._address);
       await timelockManager
@@ -548,24 +590,25 @@ describe("withdraw", function () {
       it("withdraws", async function () {
         await batchDeployTimelocks();
         const retrievedTimelocks = await timelockManager.getTimelocks();
-        // Sort timelocks with respect to their releaseTimes because we need to
+        // Sort timelocks with respect to their releaseEnd times because we need to
         // fast forward the EVM time in sequence
         let timelocksCopy = timelocks.slice();
         timelocksCopy.sort((a, b) => {
-          return a.releaseTime.gt(b.releaseTime) ? 1 : -1;
+          return a.releaseEnd.gt(b.releaseEnd) ? 1 : -1;
         });
         for (const timelock of timelocksCopy) {
           // Find the timelock among the retrieved timelocks
           const indTimelock = retrievedTimelocks.owners.findIndex(
             (owner, ind) =>
               owner == timelock.owner &&
-              retrievedTimelocks.amounts[ind].eq(timelock.amount) &&
-              retrievedTimelocks.releaseTimes[ind].eq(timelock.releaseTime) &&
+              retrievedTimelocks.totalAmounts[ind].eq(timelock.totalAmount) &&
+              retrievedTimelocks.releaseStarts[ind].eq(timelock.releaseStart) &&
+              retrievedTimelocks.releaseEnds[ind].eq(timelock.releaseEnd) &&
               retrievedTimelocks.reversibles[ind] == timelock.reversible
           );
           // Fast forward time so that the timelock is resolvable
           await ethers.provider.send("evm_setNextBlockTimestamp", [
-            retrievedTimelocks.releaseTimes[indTimelock].toNumber() + 1,
+            retrievedTimelocks.releaseEnds[indTimelock].toNumber() + 1,
           ]);
           // Get the owner of the timelock
           const ownerRole = Object.values(roles).find(
@@ -583,7 +626,7 @@ describe("withdraw", function () {
           // Check if the withdrawal was successful
           const afterBalance = await api3Token.balanceOf(ownerRole._address);
           expect(afterBalance.sub(previousBalance)).to.equal(
-            retrievedTimelocks.amounts[indTimelock]
+            retrievedTimelocks.totalAmounts[indTimelock]
           );
         }
       });
@@ -598,16 +641,23 @@ describe("withdraw", function () {
               (owner) => owner == roles.owner1._address
             );
             await ethers.provider.send("evm_setNextBlockTimestamp", [
-              retrievedTimelocks.releaseTimes[indTimelock].toNumber() + 1,
+              retrievedTimelocks.releaseEnds[indTimelock].toNumber() + 1,
             ]);
+
+            let balanceBefore = await api3Token.balanceOf(
+              roles.owner1._address
+            );
             await timelockManager
               .connect(roles.owner1)
               .withdraw(indTimelock, roles.owner1._address);
+            let balanceAfter = await api3Token.balanceOf(roles.owner1._address);
             // Verify that the withdrawn timelock amount is deleted
             const individuallyRetrievedTimelock = await timelockManager.getTimelock(
               indTimelock
             );
-            expect(individuallyRetrievedTimelock.amount).to.equal(0);
+            expect(individuallyRetrievedTimelock.totalAmount).to.equal(
+              balanceAfter.sub(balanceBefore)
+            );
             // Attempt to withdraw the same timelock
             await expect(
               timelockManager
@@ -627,7 +677,7 @@ describe("withdraw", function () {
               (owner) => owner == roles.owner1._address
             );
             await ethers.provider.send("evm_setNextBlockTimestamp", [
-              retrievedTimelocks.releaseTimes[indTimelock].toNumber() + 1,
+              retrievedTimelocks.releaseStarts[indTimelock].toNumber() + 1,
             ]);
             await expect(
               timelockManager
@@ -647,11 +697,11 @@ describe("withdraw", function () {
           const indTimelock = retrievedTimelocks.owners.findIndex(
             (owner, ind) =>
               owner == roles.owner1._address &&
-              retrievedTimelocks.amounts[ind].eq(
-                reversibleTimelocks[0].amount
+              retrievedTimelocks.totalAmounts[ind].eq(
+                reversibleTimelocks[0].totalAmount
               ) &&
-              retrievedTimelocks.releaseTimes[ind].eq(
-                reversibleTimelocks[0].releaseTime
+              retrievedTimelocks.releaseStarts[ind].eq(
+                reversibleTimelocks[0].releaseStart
               ) &&
               retrievedTimelocks.reversibles[ind] ==
                 reversibleTimelocks[0].reversible
@@ -660,7 +710,7 @@ describe("withdraw", function () {
             .connect(roles.dao)
             .reverseTimelock(indTimelock, roles.dao._address);
           await ethers.provider.send("evm_setNextBlockTimestamp", [
-            retrievedTimelocks.releaseTimes[indTimelock].toNumber() + 1,
+            retrievedTimelocks.releaseStarts[indTimelock].toNumber() + 1,
           ]);
           await expect(
             timelockManager
@@ -704,7 +754,7 @@ describe("withdraw", function () {
         (owner) => owner == roles.owner1._address
       );
       await ethers.provider.send("evm_setNextBlockTimestamp", [
-        retrievedTimelocks.releaseTimes[indTimelock].toNumber() + 1,
+        retrievedTimelocks.releaseStarts[indTimelock].toNumber() + 1,
       ]);
       await expect(
         timelockManager
@@ -730,8 +780,8 @@ describe("withdrawToPool", function () {
           const indTimelock = retrievedTimelocks.owners.findIndex(
             (owner, ind) =>
               owner == timelock.owner &&
-              retrievedTimelocks.amounts[ind].eq(timelock.amount) &&
-              retrievedTimelocks.releaseTimes[ind].eq(timelock.releaseTime) &&
+              retrievedTimelocks.totalAmounts[ind].eq(timelock.totalAmount) &&
+              retrievedTimelocks.releaseStarts[ind].eq(timelock.releaseStart) &&
               retrievedTimelocks.reversibles[ind] == timelock.reversible
           );
           const ownerRole = Object.values(roles).find(
@@ -751,7 +801,7 @@ describe("withdrawToPool", function () {
             }
           );
           const vestingEpoch = await api3Pool.getEpochIndex(
-            retrievedTimelocks.releaseTimes[indTimelock]
+            retrievedTimelocks.releaseStarts[indTimelock]
           );
           await utils.verifyLog(
             api3Pool,
@@ -759,7 +809,7 @@ describe("withdrawToPool", function () {
             "VestingCreated(bytes32,address,uint256,uint256)",
             {
               userAddress: ownerRole._address,
-              amount: retrievedTimelocks.amounts[indTimelock],
+              amount: retrievedTimelocks.totalAmounts[indTimelock],
               vestingEpoch: vestingEpoch,
             }
           );
@@ -785,11 +835,14 @@ describe("withdrawToPool", function () {
                 api3Pool.address,
                 roles.owner1._address
               );
+
             // Verify that the withdrawn timelock amount is deleted
             const individuallyRetrievedTimelock = await timelockManager.getTimelock(
               indTimelock
             );
-            expect(individuallyRetrievedTimelock.amount).to.equal(0);
+            expect(individuallyRetrievedTimelock.totalAmount).to.equal(
+              individuallyRetrievedTimelock.releasedAmount
+            );
             // Attempt to withdraw the same timelock to the pool
             await expect(
               timelockManager

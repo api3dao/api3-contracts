@@ -11,11 +11,11 @@ import "./interfaces/ITimelockManager.sol";
 /// @title Contract that timelocks API3 tokens sent to it until the vesting
 /// period is over or the staking pool is operational
 /// @notice The owner of TimelockManager (i.e., API3 DAO) can send tokens to
-/// TimelockManager to be timelocked until releaseTime. After releaseTime, the
-/// respective owner can withdraw the tokens.
+/// TimelockManager to be timelocked until releaseStart. After releaseStart, the
+/// respective owner can withdraw the tokens, either immedietly or on a cliff.
 /// Alternatively, if the owner of this contract sets api3Pool, the token
 /// owners can transfer their tokens from TimelockManager to api3Pool before
-/// releaseTime. These tokens will be not be withdrawable from api3Pool until
+/// releaseStart. These tokens will be not be withdrawable from api3Pool until
 /// their respective releaseTimes.
 /// API3 DAO can also reverse timelocks (i.e., annul them) and send the tokens
 /// to a destination of its choice. Note that timelocks can be specified not to
@@ -23,12 +23,15 @@ import "./interfaces/ITimelockManager.sol";
 contract TimelockManager is Ownable, ITimelockManager {
     using SafeMath for uint256;
 
-    struct Timelock {
+    struct Timelock { 
         address owner;
-        uint256 amount;
-        uint256 releaseTime;
+        uint256 totalAmount;
+        uint256 releasedAmount;
+        uint256 releaseStart;
+        uint256 releaseEnd;  
+        uint256 cliffTime;  
         bool reversible;
-        }
+    } 
 
     IApi3Token public immutable api3Token;
     IApi3Pool public api3Pool;
@@ -63,7 +66,7 @@ contract TimelockManager is Ownable, ITimelockManager {
     }
 
     /// @notice Transfers amount number of API3 tokens to this contract to be
-    /// received by their owner after releaseTime
+    /// received by their owner after releaseStart
     /// @dev source needs to approve() this contract to transfer amount number
     /// of tokens beforehand.
     /// This method is put behind onlyOwner to prevent third parties from
@@ -72,14 +75,16 @@ contract TimelockManager is Ownable, ITimelockManager {
     /// @param source Source of tokens
     /// @param owner Owner of tokens
     /// @param amount Amount of tokens
-    /// @param releaseTime Release time
+    /// @param releaseStart Release start time
     /// @param reversible Flag indicating if the timelock is reversible
+    /// @param cliff Flag indicating if the timelock includes a cliff or not
     function transferAndLock(
         address source,
         address owner,
         uint256 amount,
-        uint256 releaseTime,
-        bool reversible
+        uint256 releaseStart,
+        bool reversible,
+        bool cliff
         )
         public
         override
@@ -88,17 +93,24 @@ contract TimelockManager is Ownable, ITimelockManager {
         require(amount != 0, "Transferred and locked amount cannot be 0");
         timelocks[noTimelocks] = Timelock({
             owner: owner,
-            amount: amount,
-            releaseTime: releaseTime,
+            totalAmount: amount,
+            releasedAmount: 0,
+            releaseStart: releaseStart,
+            //Vesting period of 2 years for all
+            releaseEnd: releaseStart.add(104 weeks),
+            //Cliff is either 6 months, or non existant
+            cliffTime: cliff ? releaseStart.add(26 weeks) : 0,
             reversible: reversible
-            });
+        });
+
         emit TransferredAndLocked(
             noTimelocks,
             source,
             owner,
             amount,
-            releaseTime,
-            reversible
+            releaseStart,
+            reversible,
+            cliff
             );
         noTimelocks = noTimelocks.add(1);
         require(
@@ -112,15 +124,16 @@ contract TimelockManager is Ownable, ITimelockManager {
     /// @param source Source of tokens
     /// @param owners Array of owners of tokens
     /// @param amounts Array of amounts of tokens
-    /// @param releaseTimes Array of release times
+    /// @param releaseStarts Array of release start times
     /// @param reversibles Array of flags indicating if the timelocks are
     /// reversible
     function transferAndLockMultiple(
         address source,
         address[] calldata owners,
         uint256[] calldata amounts,
-        uint256[] calldata releaseTimes,
-        bool[] calldata reversibles
+        uint256[] calldata releaseStarts,
+        bool[] calldata reversibles,
+        bool[] calldata cliffs
         )
         external
         override
@@ -129,13 +142,13 @@ contract TimelockManager is Ownable, ITimelockManager {
     {
         require(
             owners.length == amounts.length
-                && owners.length == releaseTimes.length
+                && owners.length == releaseStarts.length
                 && owners.length == reversibles.length,
             "Lengths of parameters do not match"
             );
         for (uint256 ind = 0; ind < owners.length; ind++)
         {
-            transferAndLock(source, owners[ind], amounts[ind], releaseTimes[ind], reversibles[ind]);
+            transferAndLock(source, owners[ind], amounts[ind], releaseStarts[ind], reversibles[ind], cliffs[ind]);
         }
     }
 
@@ -159,18 +172,19 @@ contract TimelockManager is Ownable, ITimelockManager {
             "Timelock is not reversible"
             );
         require(
-            timelock.amount != 0,
+            timelock.releasedAmount < timelock.totalAmount,
             "Timelock is already withdrawn"
             );
         // Do not check if msg.sender is the timelock owner
         // Do not check if the timelock has matured
-        delete timelocks[indTimelock].amount;
+        uint256 amountToTransfer = timelock.totalAmount.sub(timelock.releasedAmount);
+        timelocks[indTimelock].releasedAmount = timelock.totalAmount;
         emit TimelockReversed(
             indTimelock,
             destination
             );
         require(
-            api3Token.transfer(destination, timelock.amount),
+            api3Token.transfer(destination, amountToTransfer),
             "API3 token transfer failed"
             );
     }
@@ -209,7 +223,7 @@ contract TimelockManager is Ownable, ITimelockManager {
     {
         Timelock memory timelock = timelocks[indTimelock];
         require(
-            timelock.amount != 0,
+            timelock.releasedAmount < timelock.totalAmount,
             "Timelock is already withdrawn"
             );
         require(
@@ -217,16 +231,33 @@ contract TimelockManager is Ownable, ITimelockManager {
             "Only the owner of the timelock can withdraw from it"
             );
         require(
-            now > timelock.releaseTime,
+            now > timelock.cliffTime,
             "Timelock has not matured yet"
             );
-        delete timelocks[indTimelock].amount;
+
+        uint256 withdrawableAmount;
+        if (now > timelock.releaseEnd) {
+            //Release all remaining funds
+            withdrawableAmount = timelock.totalAmount.sub(timelock.releasedAmount);
+        } else {
+            //Release linear
+            uint256 percentComplete = ((now.sub(timelock.releaseStart)).mul(10**18))
+                .div(timelock.releaseEnd.sub(timelock.releaseStart));
+            withdrawableAmount = ((timelock.totalAmount.mul(percentComplete))
+                .div(10**18)).sub(timelock.releasedAmount);
+        }
+        // uint256 tokensPerSecond = timelock.totalAmount.div(timelock.releaseEnd.sub(timelock.releaseStart));
+        // uint256 withdrawableAmount = now > timelock.releaseEnd ?
+        //     (timelock.releaseEnd.sub(timelock.releaseStart).mul(tokensPerSecond)).sub(timelock.releasedAmount) :
+        //     (now.sub(timelock.releaseStart).mul(tokensPerSecond)).sub(timelock.releasedAmount);
+
+        timelocks[indTimelock].releasedAmount = timelock.releasedAmount.add(withdrawableAmount);
         emit Withdrawn(
             indTimelock,
             destination
             );
         require(
-            api3Token.transfer(destination, timelock.amount),
+            api3Token.transfer(destination, withdrawableAmount),
             "API3 token transfer failed"
             );
     }
@@ -260,7 +291,7 @@ contract TimelockManager is Ownable, ITimelockManager {
             );
         Timelock memory timelock = timelocks[indTimelock];
         require(
-            timelock.amount != 0,
+            timelock.releasedAmount < timelock.totalAmount,
             "Timelock is already withdrawn"
             );
         require(
@@ -268,28 +299,32 @@ contract TimelockManager is Ownable, ITimelockManager {
             "Only the owner of the timelock can withdraw from it"
             );
         // Do not check if the timelock has matured
-        delete timelocks[indTimelock].amount;
+        uint256 amountToTransfer = timelock.totalAmount.sub(timelock.releasedAmount);
+        timelocks[indTimelock].releasedAmount = timelock.totalAmount;
         emit WithdrawnToPool(
             indTimelock,
             api3PoolAddress,
             beneficiary
             );
-        api3Token.approve(address(api3Pool), timelock.amount);
-        // If (now > timelock.releaseTime), the beneficiary can immediately
+        api3Token.approve(address(api3Pool), amountToTransfer);
+        // If (now > timelock.releaseStart), the beneficiary can immediately
         // have their tokens vested at the pool with an additional transaction
         api3Pool.depositWithVesting(
             address(this),
-            timelock.amount,
+            amountToTransfer,
             beneficiary,
-            timelock.releaseTime
+            timelock.releaseStart
             );
     }
 
     /// @notice Returns the details of a timelock
     /// @return owner Owner of tokens
-    /// @return amount Amount of tokens
-    /// @return releaseTime Release time
+    /// @return totalAmount Total amount of tokens
+    /// @return releasedAmount Amounts of tokens released already
+    /// @return releaseStart Release start time, ignoring cliff
+    /// @return releaseEnd Release end time
     /// @return reversible Flag indicating if the timelock is reversible
+    /// @return cliffTime Time when the cliff ends for this timelock
     function getTimelock(uint256 indTimelock)
         external
         view
@@ -297,16 +332,22 @@ contract TimelockManager is Ownable, ITimelockManager {
         onlyIfTimelockWithIndexExists(indTimelock)
         returns (
             address owner,
-            uint256 amount,
-            uint256 releaseTime,
-            bool reversible
+            uint256 totalAmount,
+            uint256 releasedAmount,
+            uint256 releaseStart,
+            uint256 releaseEnd,
+            bool reversible,
+            uint256 cliffTime
             )
     {
         Timelock storage timelock = timelocks[indTimelock];
         owner = timelock.owner;
-        amount = timelock.amount;
-        releaseTime = timelock.releaseTime;
+        totalAmount = timelock.totalAmount;
+        releasedAmount = timelock.releasedAmount;
+        releaseStart = timelock.releaseStart;
+        releaseEnd = timelock.releaseEnd;
         reversible = timelock.reversible;
+        cliffTime = timelock.cliffTime;
     }
 
     /// @notice Returns the details of all timelocks
@@ -317,9 +358,12 @@ contract TimelockManager is Ownable, ITimelockManager {
     /// the events emitted during locking, or even go through individual
     /// indices using getTimelock().
     /// @return owners Owners of tokens
-    /// @return amounts Amounts of tokens
-    /// @return releaseTimes Release times
+    /// @return totalAmounts Total amounts of tokens
+    /// @return releasedAmounts Amounts of tokens released already
+    /// @return releaseStarts Release start times ignoring the cliff
+    /// @return releaseEnds Release end times
     /// @return reversibles Array of flags indicating if the timelocks are
+    /// @return cliffTimes Time when the cliff ends for this timelock
     /// reversible
     function getTimelocks()
         external
@@ -327,22 +371,31 @@ contract TimelockManager is Ownable, ITimelockManager {
         override
         returns (
             address[] memory owners,
-            uint256[] memory amounts,
-            uint256[] memory releaseTimes,
-            bool[] memory reversibles
+            uint256[] memory totalAmounts,
+            uint256[] memory releasedAmounts,
+            uint256[] memory releaseStarts,
+            uint256[] memory releaseEnds,
+            bool[] memory reversibles,
+            uint256[] memory cliffTimes
             )
     {
         owners = new address[](noTimelocks);
-        amounts = new uint256[](noTimelocks);
-        releaseTimes = new uint256[](noTimelocks);
+        totalAmounts = new uint256[](noTimelocks);
+        releasedAmounts = new uint256[](noTimelocks);
+        releaseStarts = new uint256[](noTimelocks);
+        releaseEnds = new uint256[](noTimelocks);
         reversibles = new bool[](noTimelocks);
+        cliffTimes = new uint256[](noTimelocks);
         for (uint256 ind = 0; ind < noTimelocks; ind++)
         {
             Timelock storage timelock = timelocks[ind];
             owners[ind] = timelock.owner;
-            amounts[ind] = timelock.amount;
-            releaseTimes[ind] = timelock.releaseTime;
+            totalAmounts[ind] = timelock.totalAmount;
+            releasedAmounts[ind] = timelock.releasedAmount;
+            releaseStarts[ind] = timelock.releaseStart;
+            releaseEnds[ind] = timelock.releaseEnd;
             reversibles[ind] = timelock.reversible;
+            cliffTimes[ind] = timelock.cliffTime;
         }
     }
 
