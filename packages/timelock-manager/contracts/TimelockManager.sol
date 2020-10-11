@@ -76,15 +76,17 @@ contract TimelockManager is Ownable, ITimelockManager {
     /// @param owner Owner of tokens
     /// @param amount Amount of tokens
     /// @param releaseStart Release start time
+    /// @param releaseEnd Release end time
+    /// @param cliff Time of the vesting cliff. 0 for no cliff.
     /// @param reversible Flag indicating if the timelock is reversible
-    /// @param cliff Flag indicating if the timelock includes a cliff or not
     function transferAndLock(
         address source,
         address owner,
         uint256 amount,
         uint256 releaseStart,
-        bool reversible,
-        bool cliff
+        uint256 releaseEnd,
+        uint256 cliff,
+        bool reversible
         )
         public
         override
@@ -96,10 +98,8 @@ contract TimelockManager is Ownable, ITimelockManager {
             totalAmount: amount,
             releasedAmount: 0,
             releaseStart: releaseStart,
-            //Vesting period of 2 years for all
-            releaseEnd: releaseStart.add(104 weeks),
-            //Cliff is either 6 months, or non existant
-            cliffTime: cliff ? releaseStart.add(26 weeks) : 0,
+            releaseEnd: releaseEnd,
+            cliffTime: cliff,
             reversible: reversible
         });
 
@@ -109,8 +109,9 @@ contract TimelockManager is Ownable, ITimelockManager {
             owner,
             amount,
             releaseStart,
-            reversible,
-            cliff
+            releaseEnd,
+            cliff,
+            reversible
             );
         noTimelocks = noTimelocks.add(1);
         require(
@@ -132,8 +133,9 @@ contract TimelockManager is Ownable, ITimelockManager {
         address[] calldata owners,
         uint256[] calldata amounts,
         uint256[] calldata releaseStarts,
-        bool[] calldata reversibles,
-        bool[] calldata cliffs
+        uint256[] calldata releaseEnds,
+        uint256[] calldata cliffs,
+        bool[] calldata reversibles
         )
         external
         override
@@ -148,7 +150,14 @@ contract TimelockManager is Ownable, ITimelockManager {
             );
         for (uint256 ind = 0; ind < owners.length; ind++)
         {
-            transferAndLock(source, owners[ind], amounts[ind], releaseStarts[ind], reversibles[ind], cliffs[ind]);
+            transferAndLock(
+                source,
+                owners[ind],
+                amounts[ind],
+                releaseStarts[ind],
+                releaseEnds[ind],
+                cliffs[ind],
+                reversibles[ind]);
         }
     }
 

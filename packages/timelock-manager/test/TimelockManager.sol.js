@@ -22,22 +22,24 @@ async function batchDeployTimelocks() {
     timelocks.map((timelock) => timelock.owner),
     timelocks.map((timelock) => timelock.totalAmount),
     timelocks.map((timelock) => timelock.releaseStart),
-    timelocks.map((timelock) => timelock.reversible),
-    timelocks.map((timelock) => timelock.cliff)
+    timelocks.map((timelock) => timelock.releaseEnd),
+    timelocks.map((timelock) => timelock.cliff),
+    timelocks.map((timelock) => timelock.reversible)
   );
   // Check that each timelock deployment has emitted its respective event
   for (const timelock of timelocks) {
     await utils.verifyLog(
       timelockManager,
       tx,
-      "TransferredAndLocked(uint256,address,address,uint256,uint256,bool,bool)",
+      "TransferredAndLocked(uint256,address,address,uint256,uint256,uint256,uint256,bool)",
       {
         source: roles.dao._address,
         owner: timelock.owner,
         amount: timelock.totalAmount,
         releaseStart: timelock.releaseStart,
-        reversible: timelock.reversible,
+        releaseEnd: timelock.releaseEnd,
         cliff: timelock.cliff,
+        reversible: timelock.reversible,
       }
     );
   }
@@ -99,7 +101,9 @@ beforeEach(async () => {
         104 * 7 * 24 * 60 * 60
       ),
       reversible: true,
-      cliff: true,
+      cliff: ethers.BigNumber.from(currentTimestamp + 40000).add(
+        26 * 7 * 24 * 60 * 60 //26 week cliff
+      ),
     },
     {
       owner: roles.owner2._address,
@@ -109,7 +113,9 @@ beforeEach(async () => {
         104 * 7 * 24 * 60 * 60
       ),
       reversible: false,
-      cliff: true,
+      cliff: ethers.BigNumber.from(currentTimestamp + 40000).add(
+        26 * 7 * 24 * 60 * 60 //26 week cliff
+      ),
     },
     {
       owner: roles.owner1._address,
@@ -119,7 +125,7 @@ beforeEach(async () => {
         104 * 7 * 24 * 60 * 60
       ),
       reversible: false,
-      cliff: false,
+      cliff: 0, //no cliff
     },
     {
       owner: roles.owner2._address,
@@ -129,7 +135,7 @@ beforeEach(async () => {
         104 * 7 * 24 * 60 * 60
       ),
       reversible: true,
-      cliff: false,
+      cliff: 0, //no cliff
     },
   ];
   api3Token = await deployer.deployToken(roles.deployer, roles.dao._address);
@@ -195,20 +201,22 @@ describe("transferAndLock", function () {
             timelock.owner,
             timelock.totalAmount,
             timelock.releaseStart,
-            timelock.reversible,
-            timelock.cliff
+            timelock.releaseEnd,
+            timelock.cliff,
+            timelock.reversible
           );
         await utils.verifyLog(
           timelockManager,
           tx,
-          "TransferredAndLocked(uint256,address,address,uint256,uint256,bool,bool)",
+          "TransferredAndLocked(uint256,address,address,uint256,uint256,uint256,uint256,bool)",
           {
             source: roles.dao._address,
             owner: timelock.owner,
             amount: timelock.totalAmount,
             releaseStart: timelock.releaseStart,
-            reversible: timelock.reversible,
+            releaseEnd: timelock.releaseEnd,
             cliff: timelock.cliff,
+            reversible: timelock.reversible,
           }
         );
       }
@@ -224,8 +232,9 @@ describe("transferAndLock", function () {
               timelocks[0].owner,
               0,
               timelocks[0].releaseStart,
-              timelocks[0].reversible,
-              timelocks[0].cliff
+              timelocks[0].releaseEnd,
+              timelocks[0].cliff,
+              timelocks[0].reversible
             )
         ).to.be.revertedWith("Transferred and locked amount cannot be 0");
       });
@@ -257,8 +266,9 @@ describe("transferAndLock", function () {
             timelocks[0].owner,
             timelocks[0].totalAmount,
             timelocks[0].releaseStart,
-            timelocks[0].reversible,
-            timelocks[0].cliff
+            timelocks[0].releaseEnd,
+            timelocks[0].cliff,
+            timelocks[0].reversible
           )
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
@@ -287,8 +297,9 @@ describe("transferAndLockMultiple", function () {
             [timelocks[0].owner],
             timelocks.map((timelock) => timelock.totalAmount),
             timelocks.map((timelock) => timelock.releaseStart),
-            timelocks.map((timelock) => timelock.reversible),
-            timelocks.map((timelock) => timelock.cliff)
+            timelocks.map((timelock) => timelock.releaseEnd),
+            timelocks.map((timelock) => timelock.cliff),
+            timelocks.map((timelock) => timelock.reversible)
           )
         ).to.be.revertedWith("Lengths of parameters do not match");
       });
@@ -303,8 +314,9 @@ describe("transferAndLockMultiple", function () {
               Array(31).fill(timelocks[0].owner),
               Array(31).fill(timelocks[0].totalAmount),
               Array(31).fill(timelocks[0].releaseStart),
-              Array(31).fill(timelocks[0].reversible),
-              Array(31).fill(timelocks[0].cliff)
+              Array(31).fill(timelocks[0].releaseEnd),
+              Array(31).fill(timelocks[0].cliff),
+              Array(31).fill(timelocks[0].reversible)
             )
         ).to.be.revertedWith("Parameters are longer than 30");
       });
@@ -334,8 +346,9 @@ describe("transferAndLockMultiple", function () {
           timelocks.map((timelock) => timelock.owner),
           timelocks.map((timelock) => timelock.totalAmount),
           timelocks.map((timelock) => timelock.releaseStart),
-          timelocks.map((timelock) => timelock.reversible),
-          timelocks.map((timelock) => timelock.cliff)
+          timelocks.map((timelock) => timelock.releaseEnd),
+          timelocks.map((timelock) => timelock.cliff),
+          timelocks.map((timelock) => timelock.reversible)
         )
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
@@ -820,14 +833,6 @@ describe("withdraw", function () {
             .withArgs(indTimelock, roles.owner1._address);
           // Check if the withdrawal was successful
           const balanceAfter = await api3Token.balanceOf(roles.owner1._address);
-          const currentTimestamp = parseInt(
-            (
-              await ethers.provider.send("eth_getBlockByNumber", [
-                "latest",
-                false,
-              ])
-            ).timestamp
-          );
           expect(balanceAfter.sub(balanceBefore)).to.equal(
             //Balance is 1/728 of total (1 day out of 2 years = 1 days / 728 days)
             //TODO: JS rounding screws up the last 2 digits here, contract reports correct

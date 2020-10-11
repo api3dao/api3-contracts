@@ -11,8 +11,9 @@ interface ITimelockManager {
         address indexed owner,
         uint256 amount,
         uint256 releaseStart,
-        bool reversible,
-        bool cliff
+        uint256 releaseEnd,
+        uint256 cliff,
+        bool reversible
     );
 
     event TimelockReversed(
@@ -39,8 +40,9 @@ interface ITimelockManager {
         address owner,
         uint256 amount,
         uint256 releaseStart,
-        bool reversible,
-        bool cliff
+        uint256 releaseEnd,
+        uint256 cliff,
+        bool reversible
         )
         external;
 
@@ -48,9 +50,10 @@ interface ITimelockManager {
         address source,
         address[] calldata owners,
         uint256[] calldata amounts,
-        uint256[] calldata releaseTimes,
-        bool[] calldata reversibles,
-        bool[] calldata cliffs
+        uint256[] calldata releaseStarts,
+        uint256[] calldata releaseEnds,
+        uint256[] calldata cliffs,
+        bool[] calldata reversibles
         )
         external;
 
