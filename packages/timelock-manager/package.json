@@ -7,6 +7,7 @@
     "build": "buidler compile && npm run copy-artifacts:api3-token && npm run copy-artifacts:api3-pool",
     "deploy:mainnet": "buidler deploy --network mainnet",
     "deploy:rinkeby": "buidler deploy --network rinkeby",
+    "deploy:local": "buidler deploy --network buidlerevm",
     "flatten": "truffle-flattener ./contracts/TimelockManager.sol > TimelockManager.flat.sol && npm run flatten:delete-license-lines",
     "flatten:delete-license-lines": "sed --in-place '/SPDX-License-Identifier/d' TimelockManager.flat.sol",
     "test": "buidler test",
