@@ -1,15 +1,11 @@
 const ethers = require("ethers");
 const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
-const { deployer, utils } = require("@api3-contracts/helpers");
-module.exports = async ({ getNamedAccounts, deployments }) => {
-  ens = {
-    enabled: true,
-  };
-  const { deploy, log } = deployments;
-  // const { deployer } = await getNamedAccounts();
+const { deployer } = require("@api3-contracts/helpers");
+module.exports = async ({ deployments }) => {
+  const { log } = deployments;
   const accounts = await provider.listAccounts();
   const signer = await provider.getSigner();
-  roles = {
+  let roles = {
     deployer: accounts[0],
     dao: accounts[1],
     owner1: accounts[2],
@@ -19,7 +15,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const currentTimestamp = parseInt(
     (await provider.send("eth_getBlockByNumber", ["latest", false])).timestamp
   );
-  timelocks = [
+  const timelocks = [
     {
       owner: roles.owner1,
       amount: ethers.utils.parseEther((2e2).toString()),
@@ -53,9 +49,9 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
       reversible: true,
     },
   ];
-  api3Token = await deployer.deployToken(signer, roles.deployer);
+  let api3Token = await deployer.deployToken(signer, roles.deployer);
   log(`Deployed Token ${api3Token.address}`);
-  timelockManager = await deployer.deployTimelockManager(
+  let timelockManager = await deployer.deployTimelockManager(
     signer,
     roles.deployer,
     api3Token.address
