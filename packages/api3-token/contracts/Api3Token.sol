@@ -75,7 +75,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
     /// @param newOwner the new owner of the contract
     /// is removed from minting permissions.
     function transferOwnership(address newOwner)
-        external
+        public
         override
         onlyOwner
     {
