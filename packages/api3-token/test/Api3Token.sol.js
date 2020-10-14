@@ -120,9 +120,7 @@ describe("transfer ownership", function () {
           .transferOwnership(roles.randomPerson._address)
       )
         .to.emit(api3Token, "MinterStatusUpdated")
-        .withArgs(roles.dao._address, false)
-        .to.emit(api3Token, "MinterStatusUpdated")
-        .withArgs(roles.randomPerson._address, true);
+        .withArgs(roles.dao._address, false);
     });
   });
 
