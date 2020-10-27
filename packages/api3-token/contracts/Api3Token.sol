@@ -36,7 +36,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         address minterAddress,
         bool minterStatus
         )
-        public
+        external
         override
         onlyOwner
     {
@@ -69,19 +69,5 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         returns(bool minterStatus)
     {
         minterStatus = isMinter[minterAddress];
-    }
-
-    /// @notice Overrides Ownable transferOwnership function. Ensures old owner
-    /// @param newOwner the new owner of the contract
-    /// is removed from minting permissions.
-    function transferOwnership(address newOwner)
-        public
-        override
-        onlyOwner
-    {
-            // Remove old owner as a minter
-            updateMinterStatus(owner(), false);
-            // Transfer ownership
-            super.transferOwnership(newOwner);
     }
 }
