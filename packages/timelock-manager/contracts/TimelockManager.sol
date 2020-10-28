@@ -8,32 +8,33 @@ import "@api3-contracts/api3-pool/contracts/interfaces/IApi3Pool.sol";
 import "./interfaces/ITimelockManager.sol";
 
 
-/// @title Contract that timelocks API3 tokens sent to it until the vesting
-/// period is over or the staking pool is operational
+/// @title Contract that the API3 DAO uses to timelock API3 tokens
 /// @notice The owner of TimelockManager (i.e., API3 DAO) can send tokens to
-/// TimelockManager to be timelocked until releaseTime. After releaseTime, the
-/// respective owner can withdraw the tokens.
-/// Alternatively, if the owner of this contract sets api3Pool, the token
-/// owners can transfer their tokens from TimelockManager to api3Pool before
-/// releaseTime. These tokens will be not be withdrawable from api3Pool until
-/// their respective releaseTimes.
-/// API3 DAO can also reverse timelocks (i.e., annul them) and send the tokens
-/// to a destination of its choice. Note that timelocks can be specified not to
-/// be reversible.
+/// TimelockManager to timelock them. These tokens will then be vested to their
+/// recipient linearly, starting from releaseStart and ending at releaseEnd of
+/// the respective timelock.
+/// Alternatively, if the owner of TimelockManager (i.e., API3 DAO) sets the
+/// api3Pool address, the token recipients can transfer their locked tokens
+/// from TimelockManager to api3Pool. These tokens will remain timelocked
+/// (i.e., will not be withdrawable) at api3Pool until they are vested
+/// according to their respective schedule.
+/// The owner of TimelockManager (i.e., API3 DAO) can reverse timelocks (i.e.,
+/// annul them) and send the tokens to a destination of its choice. Note that
+/// timelocks can be specified not to be reversible.
 contract TimelockManager is Ownable, ITimelockManager {
     using SafeMath for uint256;
 
     struct Timelock {
-        address owner;
-        uint256 amount;
-        uint256 releaseTime;
+        uint256 totalAmount;
+        uint256 remainingAmount;
+        uint256 releaseStart;
+        uint256 releaseEnd;
         bool reversible;
         }
 
     IApi3Token public immutable api3Token;
     IApi3Pool public api3Pool;
-    mapping(uint256 => Timelock) public timelocks;
-    uint256 public noTimelocks = 0;
+    mapping(address => Timelock) public timelocks;
 
     /// @dev api3Pool is not initialized in the constructor because this
     /// contract will be deployed before api3Pool
@@ -51,7 +52,7 @@ contract TimelockManager is Ownable, ITimelockManager {
     }
 
     /// @notice Allows the owner (i.e., API3 DAO) to set the address of
-    /// api3Pool, which token owners can transfer their tokens to
+    /// api3Pool, which token recipients can transfer their tokens to
     /// @param api3PoolAddress Address of the API3 pool contract
     function updateApi3Pool(address api3PoolAddress)
         external
@@ -62,45 +63,52 @@ contract TimelockManager is Ownable, ITimelockManager {
         emit Api3PoolUpdated(api3PoolAddress);
     }
 
-    /// @notice Transfers amount number of API3 tokens to this contract to be
-    /// received by their owner after releaseTime
+    /// @notice Transfers API3 tokens to this contract and timelocks them
     /// @dev source needs to approve() this contract to transfer amount number
     /// of tokens beforehand.
-    /// This method is put behind onlyOwner to prevent third parties from
-    /// spamming timelocks (not an actual issue but it would be inconvenient
-    /// to sift through).
+    /// A recipient cannot have multiple independent timelocks.
     /// @param source Source of tokens
-    /// @param owner Owner of tokens
+    /// @param recipient Recipient of tokens
     /// @param amount Amount of tokens
-    /// @param releaseTime Release time
+    /// @param releaseStart Start of release time
+    /// @param releaseEnd End of release time
     /// @param reversible Flag indicating if the timelock is reversible
     function transferAndLock(
         address source,
-        address owner,
+        address recipient,
         uint256 amount,
-        uint256 releaseTime,
+        uint256 releaseStart,
+        uint256 releaseEnd,
         bool reversible
         )
         public
         override
         onlyOwner
     {
-        require(amount != 0, "Transferred and locked amount cannot be 0");
-        timelocks[noTimelocks] = Timelock({
-            owner: owner,
-            amount: amount,
-            releaseTime: releaseTime,
+        require(
+            timelocks[recipient].remainingAmount == 0,
+            "Recipient currently has locked tokens"
+            );
+        require(amount != 0, "Token amount cannot be 0");
+        require(
+            releaseEnd > releaseStart,
+            "releaseEnd has to be larger than releaseStart"
+            );
+        timelocks[recipient] = Timelock({
+            totalAmount: amount,
+            remainingAmount: amount,
+            releaseStart: releaseStart,
+            releaseEnd: releaseEnd,
             reversible: reversible
             });
         emit TransferredAndLocked(
-            noTimelocks,
             source,
-            owner,
+            recipient,
             amount,
-            releaseTime,
+            releaseStart,
+            releaseEnd,
             reversible
             );
-        noTimelocks = noTimelocks.add(1);
         require(
             api3Token.transferFrom(source, address(this), amount),
             "API3 token transferFrom failed"
@@ -108,146 +116,125 @@ contract TimelockManager is Ownable, ITimelockManager {
     }
 
     /// @notice Convenience function that calls transferAndLock() multiple times
-    /// @dev source is expected to be a single address, i.e., the DAO
+    /// @dev source is expected to be a single address, i.e., the API3 DAO.
+    /// source needs to approve() this contract to transfer the sum of the
+    /// amounts of tokens to be transferred and locked.
     /// @param source Source of tokens
-    /// @param owners Array of owners of tokens
+    /// @param recipients Array of recipients of tokens
     /// @param amounts Array of amounts of tokens
-    /// @param releaseTimes Array of release times
+    /// @param releaseStarts Array of starts of release times
+    /// @param releaseEnds Array of ends of release times
     /// @param reversibles Array of flags indicating if the timelocks are
     /// reversible
     function transferAndLockMultiple(
         address source,
-        address[] calldata owners,
+        address[] calldata recipients,
         uint256[] calldata amounts,
-        uint256[] calldata releaseTimes,
+        uint256[] calldata releaseStarts,
+        uint256[] calldata releaseEnds,
         bool[] calldata reversibles
         )
         external
         override
         onlyOwner
-        onlyIfParameterLengthIsShortEnough(owners.length)
     {
         require(
-            owners.length == amounts.length
-                && owners.length == releaseTimes.length
-                && owners.length == reversibles.length,
+            recipients.length == amounts.length
+                && recipients.length == releaseStarts.length
+                && recipients.length == releaseEnds.length
+                && recipients.length == reversibles.length,
             "Lengths of parameters do not match"
             );
-        for (uint256 ind = 0; ind < owners.length; ind++)
+        // 3,621,285 gas
+        require(
+            recipients.length <= 30,
+            "Parameters are longer than 30"
+            );
+        for (uint256 ind = 0; ind < recipients.length; ind++)
         {
-            transferAndLock(source, owners[ind], amounts[ind], releaseTimes[ind], reversibles[ind]);
+            transferAndLock(
+                source,
+                recipients[ind],
+                amounts[ind],
+                releaseStarts[ind],
+                releaseEnds[ind],
+                reversibles[ind]
+                );
         }
     }
 
     /// @notice Cancels the timelock and sends the locked tokens to destination
-    /// @dev The reversible field of the timelock must be true
-    /// @param indTimelock Index of the timelock to be reversed
+    /// @dev The reversible field of the timelock must be true.
+    /// The recipient loses the withdrawable tokens too.
+    /// @param recipient Address of the recipient whose timelock will be
+    /// reversed
     /// @param destination Address that will receive the tokens
     function reverseTimelock(
-        uint256 indTimelock,
+        address recipient,
         address destination
         )
         public
         override
         onlyOwner
-        onlyIfTimelockWithIndexExists(indTimelock)
         onlyIfDestinationIsValid(destination)
+        onlyIfRecipientHasRemainingTokens(recipient)
     {
-        Timelock memory timelock = timelocks[indTimelock];
         require(
-            timelock.reversible,
+            timelocks[recipient].reversible,
             "Timelock is not reversible"
             );
-        require(
-            timelock.amount != 0,
-            "Timelock is already withdrawn"
-            );
-        // Do not check if msg.sender is the timelock owner
-        // Do not check if the timelock has matured
-        delete timelocks[indTimelock].amount;
+        uint256 remaining = timelocks[recipient].remainingAmount;
+        timelocks[recipient].remainingAmount = 0;
         emit TimelockReversed(
-            indTimelock,
+            recipient,
             destination
             );
         require(
-            api3Token.transfer(destination, timelock.amount),
+            api3Token.transfer(destination, remaining),
             "API3 token transfer failed"
             );
     }
 
-    /// @notice Convenience function that calls reverseTimelock() multiple times
-    /// @dev destination is expected to be a single address, i.e., the DAO
-    /// @param indTimelocks Array of indices of timelocks to be reversed
+    /// @notice Used by the recipient to withdraw tokens
     /// @param destination Address that will receive the tokens
-    function reverseTimelockMultiple(
-        uint256[] calldata indTimelocks,
-        address destination
-        )
+    function withdraw(address destination)
         external
         override
-        onlyOwner
-        onlyIfParameterLengthIsShortEnough(indTimelocks.length)
-    {
-        for (uint256 ind = 0; ind < indTimelocks.length; ind++)
-        {
-            reverseTimelock(indTimelocks[ind], destination);
-        }
-    }
-
-    /// @notice Used by the owner to withdraw tokens kept by a specific
-    /// timelock
-    /// @param indTimelock Index of the timelock to be withdrawn from
-    /// @param destination Address that will receive the tokens
-    function withdraw(
-        uint256 indTimelock,
-        address destination
-        )
-        external
-        override
-        onlyIfTimelockWithIndexExists(indTimelock)
         onlyIfDestinationIsValid(destination)
+        onlyIfRecipientHasRemainingTokens(msg.sender)
     {
-        Timelock memory timelock = timelocks[indTimelock];
+        address recipient = msg.sender;
+        uint256 withdrawable = getWithdrawable(recipient);
         require(
-            timelock.amount != 0,
-            "Timelock is already withdrawn"
+            withdrawable != 0,
+            "No withdrawable tokens yet"
             );
-        require(
-            msg.sender == timelock.owner,
-            "Only the owner of the timelock can withdraw from it"
-            );
-        require(
-            now > timelock.releaseTime,
-            "Timelock has not matured yet"
-            );
-        delete timelocks[indTimelock].amount;
+        uint256 locked = timelocks[recipient].remainingAmount.sub(withdrawable);
+        timelocks[recipient].remainingAmount = locked;
         emit Withdrawn(
-            indTimelock,
+            recipient,
             destination
             );
         require(
-            api3Token.transfer(destination, timelock.amount),
+            api3Token.transfer(destination, withdrawable),
             "API3 token transfer failed"
             );
     }
 
-    /// @notice Used by the owner to withdraw their tokens kept by a specific
-    /// timelock to the API3 pool
-    /// @dev We ask the user to provide api3PoolAddress as a form of
-    /// verification, i.e., the user confirms that the API3 pool address set at
-    /// this contract is correct
-    /// @param indTimelock Index of the timelock to be withdrawn from
+    /// @notice Used by the recipient to withdraw their tokens to the API3 pool
+    /// @dev We ask the recipient to provide api3PoolAddress as a form of
+    /// validation, i.e., the recipient confirms that the API3 pool address set
+    /// at this contract is correct
     /// @param api3PoolAddress Address of the API3 pool contract
     /// @param beneficiary Address that the tokens will be deposited to the
     /// pool contract on behalf of
     function withdrawToPool(
-        uint256 indTimelock,
         address api3PoolAddress,
         address beneficiary
         )
         external
         override
-        onlyIfTimelockWithIndexExists(indTimelock)
+        onlyIfRecipientHasRemainingTokens(msg.sender)
     {
         require(
             beneficiary != address(0),
@@ -258,112 +245,96 @@ contract TimelockManager is Ownable, ITimelockManager {
             address(api3Pool) == api3PoolAddress,
             "API3 pool addresses do not match"
             );
-        Timelock memory timelock = timelocks[indTimelock];
-        require(
-            timelock.amount != 0,
-            "Timelock is already withdrawn"
-            );
-        require(
-            msg.sender == timelock.owner,
-            "Only the owner of the timelock can withdraw from it"
-            );
-        // Do not check if the timelock has matured
-        delete timelocks[indTimelock].amount;
+        address recipient = msg.sender;
+        uint256 withdrawable = getWithdrawable(recipient);
+        uint256 locked = timelocks[recipient].remainingAmount.sub(withdrawable);
+        uint256 remaining = timelocks[recipient].remainingAmount;
+        timelocks[recipient].remainingAmount = 0;
         emit WithdrawnToPool(
-            indTimelock,
+            recipient,
             api3PoolAddress,
             beneficiary
             );
-        api3Token.approve(address(api3Pool), timelock.amount);
-        // If (now > timelock.releaseTime), the beneficiary can immediately
-        // have their tokens vested at the pool with an additional transaction
+        api3Token.approve(address(api3Pool), remaining);
+        api3Pool.deposit(
+            address(this),
+            withdrawable,
+            beneficiary
+            );
         api3Pool.depositWithVesting(
             address(this),
-            timelock.amount,
+            locked,
             beneficiary,
-            timelock.releaseTime
+            now,
+            timelocks[recipient].releaseEnd
             );
     }
 
-    /// @notice Returns the details of a timelock
-    /// @return owner Owner of tokens
-    /// @return amount Amount of tokens
-    /// @return releaseTime Release time
-    /// @return reversible Flag indicating if the timelock is reversible
-    function getTimelock(uint256 indTimelock)
-        external
+    /// @notice Returns the amount of tokens a recipient can withdraw
+    /// @param recipient Address of the recipient
+    /// @return withdrawable Amount of tokens withdrawable by the recipient
+    function getWithdrawable(address recipient)
+        public
         view
-        override
-        onlyIfTimelockWithIndexExists(indTimelock)
-        returns (
-            address owner,
-            uint256 amount,
-            uint256 releaseTime,
-            bool reversible
-            )
+        returns(uint256 withdrawable)
     {
-        Timelock storage timelock = timelocks[indTimelock];
-        owner = timelock.owner;
-        amount = timelock.amount;
-        releaseTime = timelock.releaseTime;
-        reversible = timelock.reversible;
+        Timelock storage timelock = timelocks[recipient];
+        uint256 unlocked = getUnlocked(recipient);
+        uint256 withdrawn = timelock.totalAmount.sub(timelock.remainingAmount);
+        withdrawable = unlocked.sub(withdrawn);
     }
 
-    /// @notice Returns the details of all timelocks
-    /// @dev This is a convenience method for the user to be able to retrieve
-    /// all timelocks with a single call and loop through them to find the
-    /// timelocks they are looking for. In case timelocks grow too large and
-    /// this method starts reverting (not expected), the user can go through
-    /// the events emitted during locking, or even go through individual
-    /// indices using getTimelock().
-    /// @return owners Owners of tokens
-    /// @return amounts Amounts of tokens
-    /// @return releaseTimes Release times
-    /// @return reversibles Array of flags indicating if the timelocks are
-    /// reversible
-    function getTimelocks()
-        external
+    /// @notice Returns the amount of tokens that was unlocked for the
+    /// recipient to date. Includes both withdrawn and non-withdrawn tokens.
+    /// @param recipient Address of the recipient
+    /// @return unlocked Amount of tokens unlocked for the recipient
+    function getUnlocked(address recipient)
+        private
         view
-        override
-        returns (
-            address[] memory owners,
-            uint256[] memory amounts,
-            uint256[] memory releaseTimes,
-            bool[] memory reversibles
-            )
+        returns(uint256 unlocked)
     {
-        owners = new address[](noTimelocks);
-        amounts = new uint256[](noTimelocks);
-        releaseTimes = new uint256[](noTimelocks);
-        reversibles = new bool[](noTimelocks);
-        for (uint256 ind = 0; ind < noTimelocks; ind++)
+        Timelock storage timelock = timelocks[recipient];
+        if (now <= timelock.releaseStart)
         {
-            Timelock storage timelock = timelocks[ind];
-            owners[ind] = timelock.owner;
-            amounts[ind] = timelock.amount;
-            releaseTimes[ind] = timelock.releaseTime;
-            reversibles[ind] = timelock.reversible;
+            unlocked = 0;
+        }
+        else if (now >= timelock.releaseEnd)
+        {
+            unlocked = timelock.totalAmount;
+        }
+        else
+        {
+            uint256 passedTime = now.sub(timelock.releaseStart);
+            uint256 totalTime = timelock.releaseEnd.sub(timelock.releaseStart);
+            unlocked = timelock.totalAmount.mul(passedTime).div(totalTime);
         }
     }
 
-    /// @dev Reverts if a timelock with index indTimelock does not exist
-    modifier onlyIfTimelockWithIndexExists(uint256 indTimelock)
+    /// @notice Returns the details of a timelock
+    /// @param recipient Recipient of tokens
+    /// @return totalAmount Total amount of tokens
+    /// @return remainingAmount Remaining amount of tokens to be withdrawn
+    /// @return releaseStart Release start time
+    /// @return releaseEnd Release end time
+    /// @return reversible Flag indicating if the timelock is reversible
+    function getTimelock(address recipient)
+        external
+        view
+        override
+        returns (
+            uint256 totalAmount,
+            uint256 remainingAmount,
+            uint256 releaseStart,
+            uint256 releaseEnd,
+            bool reversible
+            )
     {
-        require(
-            indTimelock < noTimelocks,
-            "No such timelock exists"
-            );
-        _;
-    }
-
-    /// @dev Reverts if the parameter array is longer than 30
-    modifier onlyIfParameterLengthIsShortEnough(uint256 parameterLength)
-    {
-        require(
-            parameterLength <= 30,
-            "Parameters are longer than 30"
-            );
-        _;
+        Timelock storage timelock = timelocks[recipient];
+        totalAmount = timelock.totalAmount;
+        remainingAmount = timelock.remainingAmount;
+        releaseStart = timelock.releaseStart;
+        releaseEnd = timelock.releaseEnd;
+        reversible = timelock.reversible;
     }
 
     /// @dev Reverts if the destination is address(0)
@@ -371,7 +342,17 @@ contract TimelockManager is Ownable, ITimelockManager {
     {
         require(
             destination != address(0),
-            "Cannot withdraw to address 0"
+            "Invalid destination"
+            );
+        _;
+    }
+
+    /// @dev Reverts if the recipient does not have remaining tokens
+    modifier onlyIfRecipientHasRemainingTokens(address recipient)
+    {
+        require(
+            timelocks[recipient].remainingAmount != 0,
+            "Recipient does not have remaining tokens"
             );
         _;
     }

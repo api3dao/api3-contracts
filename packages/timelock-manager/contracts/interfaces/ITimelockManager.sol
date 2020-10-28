@@ -6,26 +6,26 @@ interface ITimelockManager {
     event Api3PoolUpdated(address api3PoolAddress);
 
     event TransferredAndLocked(
-        uint256 indexed indTimelock,
         address source,
-        address indexed owner,
+        address indexed recipient,
         uint256 amount,
-        uint256 releaseTime,
+        uint256 releaseStart,
+        uint256 releaseEnd,
         bool reversible
     );
 
     event TimelockReversed(
-        uint256 indexed indTimelock,
+        address indexed recipient,
         address destination
     );
 
     event Withdrawn(
-        uint256 indexed indTimelock,
+        address indexed recipient,
         address destination
     );
 
     event WithdrawnToPool(
-        uint256 indexed indTimelock,
+        address indexed recipient,
         address api3PoolAddress,
         address beneficiary
     );
@@ -35,64 +35,47 @@ interface ITimelockManager {
 
     function transferAndLock(
         address source,
-        address owner,
+        address recipient,
         uint256 amount,
-        uint256 releaseTime,
+        uint256 releaseStart,
+        uint256 releaseEnd,
         bool reversible
         )
         external;
 
     function transferAndLockMultiple(
         address source,
-        address[] calldata owners,
+        address[] calldata recipients,
         uint256[] calldata amounts,
-        uint256[] calldata releaseTimes,
+        uint256[] calldata releaseStarts,
+        uint256[] calldata releaseEnds,
         bool[] calldata reversibles
         )
         external;
 
     function reverseTimelock(
-        uint256 indTimelock,
+        address recipient,
         address destination
         )
         external;
 
-    function reverseTimelockMultiple(
-        uint256[] calldata indTimelocks,
-        address destination
-        )
-        external;
-
-    function withdraw(
-        uint256 indTimelock,
-        address destination
-        )
+    function withdraw(address destination)
         external;
 
     function withdrawToPool(
-        uint256 indTimelock,
         address api3PoolAddress,
         address beneficiary
         )
         external;
 
-    function getTimelock(uint256 indTimelock)
+    function getTimelock(address recipient)
         external
         view
         returns (
-            address owner,
-            uint256 amount,
-            uint256 releaseTime,
-            bool reversibles
-            );
-
-    function getTimelocks()
-        external
-        view
-        returns (
-            address[] memory owners,
-            uint256[] memory amounts,
-            uint256[] memory releaseTimes,
-            bool[] memory reversibles
+            uint256 totalAmount,
+            uint256 remainingAmount,
+            uint256 releaseStart,
+            uint256 releaseEnd,
+            bool reversible
             );
 }

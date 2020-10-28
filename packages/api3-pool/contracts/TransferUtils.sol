@@ -46,20 +46,21 @@ contract TransferUtils is PoolUtils, ITransferUtils {
     /// @param sourceAddress Source address of the funds
     /// @param amount Number of tokens to be deposited
     /// @param userAddress User that will receive the funds
-    /// @param vestingTimestamp Timestamp when the funds will be available to
-    /// be vested (to be converted to epoch)
+    /// @param vestingStart TODO
+    /// @param vestingEnd TODO
     function depositWithVesting(
         address sourceAddress,
         uint256 amount,
         address userAddress,
-        uint256 vestingTimestamp
+        uint256 vestingStart,
+        uint256 vestingEnd
         )
         external
         override
     {
         api3Token.transferFrom(sourceAddress, address(this), amount);
         balances[userAddress] = balances[userAddress].add(amount);
-        uint256 vestingEpoch = getEpochIndex(vestingTimestamp);
+        uint256 vestingEpoch = getEpochIndex(vestingStart);
         createVesting(userAddress, amount, vestingEpoch);
         emit DepositedWithVesting(sourceAddress, amount, userAddress, vestingEpoch);
     }
