@@ -15,7 +15,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
 
     /// @param contractOwner Address that will receive the ownership of the
     /// token contract
-    /// @param mintingDestination Address that the token will be minted to
+    /// @param mintingDestination Address that the tokens will be minted to
     constructor(
         address contractOwner,
         address mintingDestination
