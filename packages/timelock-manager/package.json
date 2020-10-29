@@ -9,13 +9,7 @@
     "deploy:rinkeby": "buidler deploy --network rinkeby",
     "flatten": "truffle-flattener ./contracts/TimelockManager.sol > TimelockManager.flat.sol && npm run flatten:delete-license-lines",
     "flatten:delete-license-lines": "sed --in-place '/SPDX-License-Identifier/d' TimelockManager.flat.sol",
-    "test": "buidler test",
-    "script:approve:rinkeby": "buidler run ./scripts/approve.js --network rinkeby",
-    "script:approve:mainnet": "buidler run ./scripts/approve.js --network mainnet",
-    "script:timelock-private:rinkeby": "buidler run ./scripts/timelockPrivate.js --network rinkeby",
-    "script:timelock-private:mainnet": "buidler run ./scripts/timelockPrivate.js --network mainnet",
-    "script:timelock-partner:rinkeby": "buidler run ./scripts/timelockPartner.js --network rinkeby",
-    "script:timelock-partner:mainnet": "buidler run ./scripts/timelockPartner.js --network mainnet"
+    "test": "buidler test"
   },
   "devDependencies": {
     "@api3-contracts/api3-pool": "^0.1.0",

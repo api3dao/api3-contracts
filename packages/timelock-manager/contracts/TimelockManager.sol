@@ -133,7 +133,6 @@ contract TimelockManager is Ownable, ITimelockManager {
                 && recipients.length == releaseEnds.length,
             "Lengths of parameters do not match"
             );
-        // 3,621,285 gas
         require(
             recipients.length <= 30,
             "Parameters are longer than 30"
