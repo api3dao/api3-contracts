@@ -8,7 +8,7 @@ import "./interfaces/IApi3Token.sol";
 
 /// @title API3 token contract
 /// @notice The API3 token contract is owned by the API3 DAO, which can grant
-/// minting privileges to addresses
+/// minting privileges to addresses. Any account is allowed to burn tokens.
 contract Api3Token is ERC20, Ownable, IApi3Token {
     /// @dev If an address is authorized to mint tokens
     mapping(address => bool) private isMinter;
@@ -56,6 +56,15 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
     {
         require(isMinter[msg.sender], "Only minters are allowed to mint");
         _mint(account, amount);
+    }
+
+    /// @notice Burns sender's tokens
+    /// @param amount Amount that will be burned
+    function burn(uint256 amount)
+        external
+        override
+    {
+        _burn(msg.sender, amount);
     }
 
     /// @notice Returns if an address is authorized to mint tokens

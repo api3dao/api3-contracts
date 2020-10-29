@@ -110,3 +110,15 @@ describe("mint", function () {
     });
   });
 });
+
+describe("burn", function () {
+  it("burns sender's tokens", async function () {
+    const amountToBurn = ethers.utils.parseEther((1e3).toString());
+    const initialBalance = await api3Token.balanceOf(roles.dao._address);
+    await api3Token
+      .connect(roles.dao)
+      .burn(ethers.utils.parseEther((1e3).toString()));
+    const finalBalance = await api3Token.balanceOf(roles.dao._address);
+    expect(initialBalance.sub(finalBalance)).to.equal(amountToBurn);
+  });
+});

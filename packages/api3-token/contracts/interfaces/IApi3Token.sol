@@ -22,6 +22,9 @@ interface IApi3Token is IERC20 {
         )
         external;
 
+    function burn(uint256 amount)
+        external;
+
     function getMinterStatus(address minterAddress)
         external
         view
