@@ -63,4 +63,9 @@ interface ITimelockManager {
             uint256 releaseStart,
             uint256 releaseEnd
             );
+
+    function getRemainingAmount(address recipient)
+        external
+        view
+        returns (uint256 remainingAmount);
 }

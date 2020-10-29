@@ -292,6 +292,21 @@ contract TimelockManager is Ownable, ITimelockManager {
         releaseEnd = timelock.releaseEnd;
     }
 
+    /// @notice Returns remaining amount of a timelock
+    /// @dev Provided separately to be used with Etherscan's "Read"
+    /// functionality, in case getTimelock() output is too complicated for the
+    /// user.
+    /// @param recipient Recipient of tokens
+    /// @return remainingAmount Remaining amount of tokens to be withdrawn
+    function getRemainingAmount(address recipient)
+        external
+        view
+        override
+        returns (uint256 remainingAmount)
+    {
+        remainingAmount = timelocks[recipient].remainingAmount;
+    }
+
     /// @dev Reverts if the destination is address(0)
     modifier onlyIfDestinationIsValid(address destination)
     {

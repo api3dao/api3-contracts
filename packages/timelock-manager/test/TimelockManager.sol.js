@@ -50,6 +50,10 @@ async function verifyDeployedTimelocks() {
     expect(retrievedTimelock.remainingAmount).to.equal(timelock.amount);
     expect(retrievedTimelock.releaseStart).to.equal(timelock.releaseStart);
     expect(retrievedTimelock.releaseEnd).to.equal(timelock.releaseEnd);
+    const retrievedRemainingAmount = await timelockManager.getRemainingAmount(
+      timelock.recipient
+    );
+    expect(retrievedRemainingAmount).to.equal(timelock.amount);
   }
 }
 
