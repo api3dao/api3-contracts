@@ -18,9 +18,6 @@ import "./interfaces/ITimelockManager.sol";
 /// from TimelockManager to api3Pool. These tokens will remain timelocked
 /// (i.e., will not be withdrawable) at api3Pool until they are vested
 /// according to their respective schedule.
-/// The owner of TimelockManager (i.e., API3 DAO) can reverse timelocks (i.e.,
-/// annul them) and send the tokens to a destination of its choice. Note that
-/// timelocks can be specified not to be reversible.
 contract TimelockManager is Ownable, ITimelockManager {
     using SafeMath for uint256;
 
@@ -29,7 +26,6 @@ contract TimelockManager is Ownable, ITimelockManager {
         uint256 remainingAmount;
         uint256 releaseStart;
         uint256 releaseEnd;
-        bool reversible;
         }
 
     IApi3Token public immutable api3Token;
@@ -72,14 +68,12 @@ contract TimelockManager is Ownable, ITimelockManager {
     /// @param amount Amount of tokens
     /// @param releaseStart Start of release time
     /// @param releaseEnd End of release time
-    /// @param reversible Flag indicating if the timelock is reversible
     function transferAndLock(
         address source,
         address recipient,
         uint256 amount,
         uint256 releaseStart,
-        uint256 releaseEnd,
-        bool reversible
+        uint256 releaseEnd
         )
         public
         override
@@ -87,9 +81,9 @@ contract TimelockManager is Ownable, ITimelockManager {
     {
         require(
             timelocks[recipient].remainingAmount == 0,
-            "Recipient currently has locked tokens"
+            "Recipient has remaining tokens"
             );
-        require(amount != 0, "Token amount cannot be 0");
+        require(amount != 0, "Amount cannot be 0");
         require(
             releaseEnd > releaseStart,
             "releaseEnd has to be larger than releaseStart"
@@ -98,16 +92,14 @@ contract TimelockManager is Ownable, ITimelockManager {
             totalAmount: amount,
             remainingAmount: amount,
             releaseStart: releaseStart,
-            releaseEnd: releaseEnd,
-            reversible: reversible
+            releaseEnd: releaseEnd
             });
         emit TransferredAndLocked(
             source,
             recipient,
             amount,
             releaseStart,
-            releaseEnd,
-            reversible
+            releaseEnd
             );
         require(
             api3Token.transferFrom(source, address(this), amount),
@@ -124,15 +116,12 @@ contract TimelockManager is Ownable, ITimelockManager {
     /// @param amounts Array of amounts of tokens
     /// @param releaseStarts Array of starts of release times
     /// @param releaseEnds Array of ends of release times
-    /// @param reversibles Array of flags indicating if the timelocks are
-    /// reversible
     function transferAndLockMultiple(
         address source,
         address[] calldata recipients,
         uint256[] calldata amounts,
         uint256[] calldata releaseStarts,
-        uint256[] calldata releaseEnds,
-        bool[] calldata reversibles
+        uint256[] calldata releaseEnds
         )
         external
         override
@@ -141,8 +130,7 @@ contract TimelockManager is Ownable, ITimelockManager {
         require(
             recipients.length == amounts.length
                 && recipients.length == releaseStarts.length
-                && recipients.length == releaseEnds.length
-                && recipients.length == reversibles.length,
+                && recipients.length == releaseEnds.length,
             "Lengths of parameters do not match"
             );
         // 3,621,285 gas
@@ -157,42 +145,9 @@ contract TimelockManager is Ownable, ITimelockManager {
                 recipients[ind],
                 amounts[ind],
                 releaseStarts[ind],
-                releaseEnds[ind],
-                reversibles[ind]
+                releaseEnds[ind]
                 );
         }
-    }
-
-    /// @notice Cancels the timelock and sends the locked tokens to destination
-    /// @dev The reversible field of the timelock must be true.
-    /// The recipient loses the withdrawable tokens too.
-    /// @param recipient Address of the recipient whose timelock will be
-    /// reversed
-    /// @param destination Address that will receive the tokens
-    function reverseTimelock(
-        address recipient,
-        address destination
-        )
-        public
-        override
-        onlyOwner
-        onlyIfDestinationIsValid(destination)
-        onlyIfRecipientHasRemainingTokens(recipient)
-    {
-        require(
-            timelocks[recipient].reversible,
-            "Timelock is not reversible"
-            );
-        uint256 remaining = timelocks[recipient].remainingAmount;
-        timelocks[recipient].remainingAmount = 0;
-        emit TimelockReversed(
-            recipient,
-            destination
-            );
-        require(
-            api3Token.transfer(destination, remaining),
-            "API3 token transfer failed"
-            );
     }
 
     /// @notice Used by the recipient to withdraw tokens
@@ -209,8 +164,7 @@ contract TimelockManager is Ownable, ITimelockManager {
             withdrawable != 0,
             "No withdrawable tokens yet"
             );
-        uint256 locked = timelocks[recipient].remainingAmount.sub(withdrawable);
-        timelocks[recipient].remainingAmount = locked;
+        timelocks[recipient].remainingAmount = timelocks[recipient].remainingAmount.sub(withdrawable);
         emit Withdrawn(
             recipient,
             destination
@@ -247,7 +201,7 @@ contract TimelockManager is Ownable, ITimelockManager {
             );
         address recipient = msg.sender;
         uint256 withdrawable = getWithdrawable(recipient);
-        uint256 locked = timelocks[recipient].remainingAmount.sub(withdrawable);
+        uint256 timelocked = timelocks[recipient].remainingAmount.sub(withdrawable);
         uint256 remaining = timelocks[recipient].remainingAmount;
         timelocks[recipient].remainingAmount = 0;
         emit WithdrawnToPool(
@@ -255,22 +209,27 @@ contract TimelockManager is Ownable, ITimelockManager {
             api3PoolAddress,
             beneficiary
             );
+        // Approve the total amount
         api3Token.approve(address(api3Pool), remaining);
+        // Deposit the funds that are withdrawable without vesting
         api3Pool.deposit(
             address(this),
             withdrawable,
             beneficiary
             );
+        // Deposit the funds that are still timelocked with vesting.
+        // The vesting will continue the same way at the pool, starting from
+        // now, ending at releaseEnd, released linearly.
         api3Pool.depositWithVesting(
             address(this),
-            locked,
+            timelocked,
             beneficiary,
             now,
             timelocks[recipient].releaseEnd
             );
     }
 
-    /// @notice Returns the amount of tokens a recipient can withdraw
+    /// @notice Returns the amount of tokens a recipient can currently withdraw
     /// @param recipient Address of the recipient
     /// @return withdrawable Amount of tokens withdrawable by the recipient
     function getWithdrawable(address recipient)
@@ -284,7 +243,7 @@ contract TimelockManager is Ownable, ITimelockManager {
         withdrawable = unlocked.sub(withdrawn);
     }
 
-    /// @notice Returns the amount of tokens that was unlocked for the
+    /// @notice Returns the amount of tokens that was unlocked by the
     /// recipient to date. Includes both withdrawn and non-withdrawn tokens.
     /// @param recipient Address of the recipient
     /// @return unlocked Amount of tokens unlocked for the recipient
@@ -316,7 +275,6 @@ contract TimelockManager is Ownable, ITimelockManager {
     /// @return remainingAmount Remaining amount of tokens to be withdrawn
     /// @return releaseStart Release start time
     /// @return releaseEnd Release end time
-    /// @return reversible Flag indicating if the timelock is reversible
     function getTimelock(address recipient)
         external
         view
@@ -325,8 +283,7 @@ contract TimelockManager is Ownable, ITimelockManager {
             uint256 totalAmount,
             uint256 remainingAmount,
             uint256 releaseStart,
-            uint256 releaseEnd,
-            bool reversible
+            uint256 releaseEnd
             )
     {
         Timelock storage timelock = timelocks[recipient];
@@ -334,7 +291,6 @@ contract TimelockManager is Ownable, ITimelockManager {
         remainingAmount = timelock.remainingAmount;
         releaseStart = timelock.releaseStart;
         releaseEnd = timelock.releaseEnd;
-        reversible = timelock.reversible;
     }
 
     /// @dev Reverts if the destination is address(0)

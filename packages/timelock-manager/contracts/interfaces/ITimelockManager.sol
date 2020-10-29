@@ -10,13 +10,7 @@ interface ITimelockManager {
         address indexed recipient,
         uint256 amount,
         uint256 releaseStart,
-        uint256 releaseEnd,
-        bool reversible
-    );
-
-    event TimelockReversed(
-        address indexed recipient,
-        address destination
+        uint256 releaseEnd
     );
 
     event Withdrawn(
@@ -38,8 +32,7 @@ interface ITimelockManager {
         address recipient,
         uint256 amount,
         uint256 releaseStart,
-        uint256 releaseEnd,
-        bool reversible
+        uint256 releaseEnd
         )
         external;
 
@@ -48,14 +41,7 @@ interface ITimelockManager {
         address[] calldata recipients,
         uint256[] calldata amounts,
         uint256[] calldata releaseStarts,
-        uint256[] calldata releaseEnds,
-        bool[] calldata reversibles
-        )
-        external;
-
-    function reverseTimelock(
-        address recipient,
-        address destination
+        uint256[] calldata releaseEnds
         )
         external;
 
@@ -75,7 +61,6 @@ interface ITimelockManager {
             uint256 totalAmount,
             uint256 remainingAmount,
             uint256 releaseStart,
-            uint256 releaseEnd,
-            bool reversible
+            uint256 releaseEnd
             );
 }
