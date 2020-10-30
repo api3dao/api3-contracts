@@ -20,8 +20,8 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         address contractOwner,
         address mintingDestination
         )
-        ERC20("API3", "API3")
         public
+        ERC20("API3", "API3")
         {
             transferOwnership(contractOwner);
             // Initial supply is 100 million (1e8)
