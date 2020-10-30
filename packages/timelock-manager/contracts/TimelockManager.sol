@@ -200,8 +200,8 @@ contract TimelockManager is Ownable, ITimelockManager {
             );
         address recipient = msg.sender;
         uint256 withdrawable = getWithdrawable(recipient);
-        uint256 timelocked = timelocks[recipient].remainingAmount.sub(withdrawable);
         uint256 remaining = timelocks[recipient].remainingAmount;
+        uint256 timelocked = remaining.sub(withdrawable);
         timelocks[recipient].remainingAmount = 0;
         emit WithdrawnToPool(
             recipient,
