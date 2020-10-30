@@ -211,11 +211,14 @@ contract TimelockManager is Ownable, ITimelockManager {
         // Approve the total amount
         api3Token.approve(address(api3Pool), remaining);
         // Deposit the funds that are withdrawable without vesting
-        api3Pool.deposit(
-            address(this),
-            withdrawable,
-            beneficiary
-            );
+        if (withdrawable != 0)
+        {
+            api3Pool.deposit(
+                address(this),
+                withdrawable,
+                beneficiary
+                );
+        }
         // Deposit the funds that are still timelocked with vesting.
         // The vesting will continue the same way at the pool, starting from
         // now, ending at releaseEnd, released linearly.
