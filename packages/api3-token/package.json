@@ -3,8 +3,12 @@
   "version": "0.1.0",
   "scripts": {
     "build": "buidler compile",
-    "deploy:mainnet": "buidler deploy --network mainnet",
-    "deploy:rinkeby": "buidler deploy --network rinkeby",
+    "deploy-token:mainnet": "buidler deploy --tags deploy --network mainnet",
+    "deploy-token:rinkeby": "buidler deploy --tags deploy --network rinkeby",
+    "deposit-token:mainnet": "buidler deploy --tags deposit-token --network mainnet",
+    "deposit-token:rinkeby": "buidler deploy --tags deposit-token --network rinkeby",
+    "approve-token:mainnet": "buidler deploy --tags approve-token --network mainnet",
+    "approve-token:rinkeby": "buidler deploy --tags approve-token --network rinkeby",
     "flatten": "truffle-flattener ./contracts/Api3Token.sol > Api3Token.flat.sol && npm run flatten:delete-license-lines",
     "flatten:delete-license-lines": "sed --in-place '/SPDX-License-Identifier/d' Api3Token.flat.sol",
     "test": "buidler test"
