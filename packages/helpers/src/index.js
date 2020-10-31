@@ -5,5 +5,5 @@ const deploymentAddresses = require("./deploymentAddresses.json");
 module.exports = {
   deployer,
   utils,
-  deploymentAddresses
+  deploymentAddresses,
 };

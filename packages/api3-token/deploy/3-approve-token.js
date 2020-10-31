@@ -17,7 +17,11 @@ module.exports = async ({ deployments }) => {
     ethers.utils.parseEther((55e6).toString())
   );
 
-  log(`Approved ${amountToApprove.toString()} API3 tokens to ${deploymentAddresses.timelockManager[await getChainId()]}`);
+  log(
+    `Approved ${amountToApprove.toString()} API3 tokens to ${
+      deploymentAddresses.timelockManager[await getChainId()]
+    }`
+  );
 };
 
 module.exports.tags = ["approve-token"];

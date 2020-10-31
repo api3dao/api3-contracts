@@ -23,7 +23,11 @@ module.exports = async ({ deployments }) => {
     { gasLimit: 6000000 }
   );
 
-  log(`Transferred and locked at ${timelockManager.address} with parameters ${JSON.stringify(input)}`);
+  log(
+    `Transferred and locked at ${
+      timelockManager.address
+    } with parameters ${JSON.stringify(input)}`
+  );
 };
 
 module.exports.tags = ["transfer-and-lock"];
