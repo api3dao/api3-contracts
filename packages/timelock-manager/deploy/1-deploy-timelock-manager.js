@@ -6,7 +6,8 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
   const api3DaoVaultAddress =
     deploymentAddresses.api3DaoVault[(await getChainId()).toString()];
-  const api3TokenAddress = deploymentAddresses.api3Token[(await getChainId()).toString()];
+  const api3TokenAddress =
+    deploymentAddresses.api3Token[(await getChainId()).toString()];
 
   const timelockManager = await deploy("TimelockManager", {
     args: [api3TokenAddress, api3DaoVaultAddress],
