@@ -8,11 +8,11 @@ module.exports = {
     },
     mainnet: {
       url: process.env.MAINNET_PROVIDER_URL || "",
-      accounts: {mnemonic: process.env.MNEMONIC || ""}
+      accounts: {mnemonic: process.env.MAINNET_MNEMONIC || ""}
     },
     rinkeby: {
       url: process.env.RINKEBY_PROVIDER_URL || "",
-      accounts: {mnemonic: process.env.MNEMONIC || ""}
+      accounts: {mnemonic: process.env.RINKEBY_MNEMONIC || ""}
     },
   },
   namedAccounts: {
