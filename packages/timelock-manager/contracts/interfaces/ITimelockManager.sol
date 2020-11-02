@@ -23,7 +23,8 @@ interface ITimelockManager {
 
     event Withdrawn(
         address indexed recipient,
-        address destination
+        address destination,
+        uint256 amount
         );
 
     event WithdrawnToPool(

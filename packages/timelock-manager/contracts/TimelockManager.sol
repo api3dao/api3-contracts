@@ -218,13 +218,14 @@ contract TimelockManager is Ownable, ITimelockManager {
             "No withdrawable tokens yet"
             );
         timelocks[recipient].remainingAmount = timelocks[recipient].remainingAmount.sub(withdrawable);
-        emit Withdrawn(
-            recipient,
-            destination
-            );
         require(
             api3Token.transfer(destination, withdrawable),
             "API3 token transfer failed"
+            );
+        emit Withdrawn(
+            recipient,
+            destination,
+            withdrawable
             );
     }
 

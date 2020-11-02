@@ -496,7 +496,7 @@ describe("withdraw", function () {
               .withdraw(recipientRole._address)
           )
             .to.emit(timelockManager, "Withdrawn")
-            .withArgs(recipientRole._address, recipientRole._address);
+            .withArgs(recipientRole._address, recipientRole._address, timelock.amount);
           // Check if the withdrawal was successful
           const afterBalance = await api3Token.balanceOf(
             recipientRole._address
@@ -592,7 +592,7 @@ describe("withdraw", function () {
             .withdraw(recipientRole._address)
         )
           .to.emit(timelockManager, "Withdrawn")
-          .withArgs(recipientRole._address, recipientRole._address);
+          .withArgs(recipientRole._address, recipientRole._address, timelock.amount.div(2));
         // Check if the withdrawal was successful
         const duringBalance = await api3Token.balanceOf(recipientRole._address);
         // Verify that the recipient recieved half of the amount
@@ -609,7 +609,7 @@ describe("withdraw", function () {
             .withdraw(recipientRole._address)
         )
           .to.emit(timelockManager, "Withdrawn")
-          .withArgs(recipientRole._address, recipientRole._address);
+          .withArgs(recipientRole._address, recipientRole._address, timelock.amount.div(2));
         const afterBalance = await api3Token.balanceOf(recipientRole._address);
         expect(afterBalance.sub(previousBalance)).to.equal(timelock.amount);
       });
