@@ -99,16 +99,16 @@ contract TimelockManager is Ownable, ITimelockManager {
             releaseStart: releaseStart,
             releaseEnd: releaseEnd
             });
+        require(
+            api3Token.transferFrom(source, address(this), amount),
+            "API3 token transferFrom failed"
+            );
         emit TransferredAndLocked(
             source,
             recipient,
             amount,
             releaseStart,
             releaseEnd
-            );
-        require(
-            api3Token.transferFrom(source, address(this), amount),
-            "API3 token transferFrom failed"
             );
     }
 
