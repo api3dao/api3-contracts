@@ -139,8 +139,8 @@ describe("updateApi3Pool", function () {
 
 describe("revertTimelock", function () {
   context("Caller is the DAO", async function () {
-    context("Destination is valid", async function () {
-      context("Recipient has remaining tokens", async function () {
+    context("Recipient has remaining tokens", async function () {
+      context("Destination is valid", async function () {
         context(
           "Recipient has allowed their timelock to be reverted",
           async function () {
@@ -196,26 +196,27 @@ describe("revertTimelock", function () {
           }
         );
       });
-      context("Recipient does not have remaining tokens", async function () {
+      context("Destination is not valid", async function () {
         it("reverts", async function () {
+          await batchDeployTimelocks();
           await expect(
             timelockManager
               .connect(roles.dao)
-              .revertTimelock(roles.randomPerson._address, roles.dao._address)
-          ).to.be.revertedWith("Recipient does not have remaining tokens");
+              .revertTimelock(
+                roles.recipient1._address,
+                ethers.constants.AddressZero
+              )
+          ).to.be.revertedWith("Invalid destination");
         });
       });
     });
-    context("Destination is not valid", async function () {
+    context("Recipient does not have remaining tokens", async function () {
       it("reverts", async function () {
         await expect(
           timelockManager
             .connect(roles.dao)
-            .revertTimelock(
-              roles.recipient1._address,
-              ethers.constants.AddressZero
-            )
-        ).to.be.revertedWith("Invalid destination");
+            .revertTimelock(roles.randomPerson._address, roles.dao._address)
+        ).to.be.revertedWith("Recipient does not have remaining tokens");
       });
     });
   });

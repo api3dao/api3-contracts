@@ -74,9 +74,12 @@ contract TimelockManager is Ownable, ITimelockManager {
         external
         override
         onlyOwner
-        onlyIfDestinationIsValid(destination)
         onlyIfRecipientHasRemainingTokens(recipient)
     {
+        require(
+            destination != address(0),
+            "Invalid destination"
+            );
         require(
             allowedTimelockToBeReverted[recipient],
             "Recipient did not allow timelock to be reverted"
@@ -373,16 +376,6 @@ contract TimelockManager is Ownable, ITimelockManager {
         returns (bool revertStatus)
     {
         revertStatus = allowedTimelockToBeReverted[recipient];
-    }
-
-    /// @dev Reverts if the destination is address(0)
-    modifier onlyIfDestinationIsValid(address destination)
-    {
-        require(
-            destination != address(0),
-            "Invalid destination"
-            );
-        _;
     }
 
     /// @dev Reverts if the recipient does not have remaining tokens
