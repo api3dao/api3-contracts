@@ -17,8 +17,8 @@ beforeEach(async () => {
 
 describe("constructor", function () {
   it("deploys correctly", async function () {
-    expect(await api3Token.name()).to.equal('API3');
-    expect(await api3Token.symbol()).to.equal('API3');
+    expect(await api3Token.name()).to.equal("API3");
+    expect(await api3Token.symbol()).to.equal("API3");
     expect(await api3Token.decimals()).to.equal(18);
 
     expect(await api3Token.owner()).to.equal(roles.dao._address);
@@ -36,18 +36,14 @@ describe("renounceOwnership", function () {
   context("If the caller is the DAO", async function () {
     it("reverts", async function () {
       await expect(
-        api3Token
-          .connect(roles.dao)
-          .renounceOwnership()
+        api3Token.connect(roles.dao).renounceOwnership()
       ).to.be.revertedWith("Ownership cannot be renounced");
     });
   });
   context("If the caller is not the DAO", async function () {
     it("reverts", async function () {
       await expect(
-        api3Token
-          .connect(roles.randomPerson)
-          .renounceOwnership()
+        api3Token.connect(roles.randomPerson).renounceOwnership()
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
@@ -105,6 +101,23 @@ describe("updateMinterStatus", function () {
             ethers.utils.parseEther((1e8).toString())
           )
       ).to.be.revertedWith("Only minters are allowed to mint");
+    });
+    context("If the input will not update state", async function () {
+      it("reverts", async function () {
+        await expect(
+          api3Token
+            .connect(roles.dao)
+            .updateMinterStatus(roles.minter._address, false)
+        ).to.be.revertedWith("Input will not update status");
+        await api3Token
+          .connect(roles.dao)
+          .updateMinterStatus(roles.minter._address, true);
+        await expect(
+          api3Token
+            .connect(roles.dao)
+            .updateMinterStatus(roles.minter._address, true)
+        ).to.be.revertedWith("Input will not update status");
+      });
     });
   });
   context("If the caller is not the DAO", async function () {

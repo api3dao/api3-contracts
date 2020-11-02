@@ -49,6 +49,10 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         override
         onlyOwner
     {
+        require(
+            isMinter[minterAddress] != minterStatus,
+            "Input will not update status"
+            );
         isMinter[minterAddress] = minterStatus;
         emit MinterStatusUpdated(minterAddress, minterStatus);
     }
