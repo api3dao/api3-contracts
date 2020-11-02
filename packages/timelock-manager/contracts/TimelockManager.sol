@@ -204,11 +204,9 @@ contract TimelockManager is Ownable, ITimelockManager {
     }
 
     /// @notice Used by the recipient to withdraw tokens
-    /// @param destination Address that will receive the tokens
-    function withdraw(address destination)
+    function withdraw()
         external
         override
-        onlyIfDestinationIsValid(destination)
         onlyIfRecipientHasRemainingTokens(msg.sender)
     {
         address recipient = msg.sender;
@@ -219,12 +217,11 @@ contract TimelockManager is Ownable, ITimelockManager {
             );
         timelocks[recipient].remainingAmount = timelocks[recipient].remainingAmount.sub(withdrawable);
         require(
-            api3Token.transfer(destination, withdrawable),
+            api3Token.transfer(recipient, withdrawable),
             "API3 token transfer failed"
             );
         emit Withdrawn(
             recipient,
-            destination,
             withdrawable
             );
     }

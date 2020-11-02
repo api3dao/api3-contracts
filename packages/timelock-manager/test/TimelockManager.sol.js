@@ -493,10 +493,10 @@ describe("withdraw", function () {
           await expect(
             timelockManager
               .connect(recipientRole)
-              .withdraw(recipientRole._address)
+              .withdraw()
           )
             .to.emit(timelockManager, "Withdrawn")
-            .withArgs(recipientRole._address, recipientRole._address, timelock.amount);
+            .withArgs(recipientRole._address, timelock.amount);
           // Check if the withdrawal was successful
           const afterBalance = await api3Token.balanceOf(
             recipientRole._address
@@ -519,7 +519,7 @@ describe("withdraw", function () {
             );
             await timelockManager
               .connect(recipientRole)
-              .withdraw(recipientRole._address);
+              .withdraw();
             // Verify that the withdrawn timelock amount is depleted
             const retrievedTimelock = await timelockManager.getTimelock(
               recipientRole._address
@@ -529,28 +529,8 @@ describe("withdraw", function () {
             await expect(
               timelockManager
                 .connect(recipientRole)
-                .withdraw(recipientRole._address)
+                .withdraw()
             ).to.be.revertedWith("Recipient does not have remaining tokens");
-          });
-        }
-      );
-      context(
-        "Recipient attempts to withdraw to address 0",
-        async function () {
-          it("reverts (test uses evm_setNextBlockTimestamp)", async function () {
-            await batchDeployTimelocks();
-            const timelock = timelocks[0];
-            await ethers.provider.send("evm_setNextBlockTimestamp", [
-              timelock.releaseEnd.toNumber() + 1,
-            ]);
-            const recipientRole = Object.values(roles).find(
-              (role) => role._address == timelock.recipient
-            );
-            await expect(
-              timelockManager
-                .connect(recipientRole)
-                .withdraw(ethers.constants.AddressZero)
-            ).to.be.revertedWith("Invalid destination");
           });
         }
       );
@@ -565,7 +545,7 @@ describe("withdraw", function () {
         await expect(
           timelockManager
             .connect(recipientRole)
-            .withdraw(roles.recipient1._address)
+            .withdraw()
         ).to.be.revertedWith("No withdrawable tokens yet");
       });
     });
@@ -589,10 +569,10 @@ describe("withdraw", function () {
         await expect(
           timelockManager
             .connect(recipientRole)
-            .withdraw(recipientRole._address)
+            .withdraw()
         )
           .to.emit(timelockManager, "Withdrawn")
-          .withArgs(recipientRole._address, recipientRole._address, timelock.amount.div(2));
+          .withArgs(recipientRole._address, timelock.amount.div(2));
         // Check if the withdrawal was successful
         const duringBalance = await api3Token.balanceOf(recipientRole._address);
         // Verify that the recipient recieved half of the amount
@@ -606,10 +586,10 @@ describe("withdraw", function () {
         await expect(
           timelockManager
             .connect(recipientRole)
-            .withdraw(recipientRole._address)
+            .withdraw()
         )
           .to.emit(timelockManager, "Withdrawn")
-          .withArgs(recipientRole._address, recipientRole._address, timelock.amount.div(2));
+          .withArgs(recipientRole._address, timelock.amount.div(2));
         const afterBalance = await api3Token.balanceOf(recipientRole._address);
         expect(afterBalance.sub(previousBalance)).to.equal(timelock.amount);
       });
@@ -620,7 +600,7 @@ describe("withdraw", function () {
         await expect(
           timelockManager
             .connect(roles.randomPerson)
-            .withdraw(roles.randomPerson._address)
+            .withdraw()
         ).to.be.revertedWith("Recipient does not have remaining tokens");
       });
     });

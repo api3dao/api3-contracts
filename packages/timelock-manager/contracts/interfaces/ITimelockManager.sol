@@ -23,7 +23,6 @@ interface ITimelockManager {
 
     event Withdrawn(
         address indexed recipient,
-        address destination,
         uint256 amount
         );
 
@@ -63,7 +62,7 @@ interface ITimelockManager {
         )
         external;
 
-    function withdraw(address destination)
+    function withdraw()
         external;
 
     function withdrawToPool(
