@@ -55,6 +55,10 @@ contract TimelockManager is Ownable, ITimelockManager {
         override
         onlyOwner
     {
+        require(
+            address(api3Pool) != api3PoolAddress,
+            "Input will not update state"
+        );
         api3Pool = IApi3Pool(api3PoolAddress);
         emit Api3PoolUpdated(api3PoolAddress);
     }

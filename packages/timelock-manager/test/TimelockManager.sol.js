@@ -105,14 +105,26 @@ describe("constructor", function () {
 
 describe("updateApi3Pool", function () {
   context("If the caller is the DAO", async function () {
-    it("updates the pool address", async function () {
-      const newPoolAddress = "0x0000000000000000000000000000000000000001";
-      await expect(
-        timelockManager.connect(roles.dao).updateApi3Pool(newPoolAddress)
-      )
-        .to.emit(timelockManager, "Api3PoolUpdated")
-        .withArgs(newPoolAddress);
-      expect(await timelockManager.api3Pool()).to.equal(newPoolAddress);
+    context("If the input will update state", async function () {
+      it("updates the pool address", async function () {
+        const newPoolAddress = "0x0000000000000000000000000000000000000001";
+        await expect(
+          timelockManager.connect(roles.dao).updateApi3Pool(newPoolAddress)
+        )
+          .to.emit(timelockManager, "Api3PoolUpdated")
+          .withArgs(newPoolAddress);
+        expect(await timelockManager.api3Pool()).to.equal(newPoolAddress);
+      });
+    });
+    context("If the input will not update state", async function () {
+      it("reverts", async function () {
+        const oldPoolAddress = "0x0000000000000000000000000000000000000000";
+        await expect(
+          timelockManager
+            .connect(roles.dao)
+            .updateApi3Pool(oldPoolAddress)
+        ).to.be.revertedWith("Input will not update state");
+        });
     });
   });
   context("If the caller is not the DAO", async function () {
