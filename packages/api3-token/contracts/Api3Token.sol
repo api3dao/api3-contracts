@@ -57,7 +57,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
     {
         require(
             isMinter[minterAddress] != minterStatus,
-            "Input will not update status"
+            "Input will not update state"
             );
         isMinter[minterAddress] = minterStatus;
         emit MinterStatusUpdated(minterAddress, minterStatus);
@@ -71,7 +71,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
     {
         require(
             isBurner[msg.sender] != burnerStatus,
-            "Input will not update status"
+            "Input will not update state"
             );
         isBurner[msg.sender] = burnerStatus;
         emit BurnerStatusUpdated(msg.sender, burnerStatus);

@@ -108,7 +108,7 @@ describe("updateMinterStatus", function () {
           api3Token
             .connect(roles.dao)
             .updateMinterStatus(roles.minter._address, false)
-        ).to.be.revertedWith("Input will not update status");
+        ).to.be.revertedWith("Input will not update state");
         await api3Token
           .connect(roles.dao)
           .updateMinterStatus(roles.minter._address, true);
@@ -116,7 +116,7 @@ describe("updateMinterStatus", function () {
           api3Token
             .connect(roles.dao)
             .updateMinterStatus(roles.minter._address, true)
-        ).to.be.revertedWith("Input will not update status");
+        ).to.be.revertedWith("Input will not update state");
       });
     });
   });
@@ -160,7 +160,7 @@ describe("updateBurnerStatus", function () {
         api3Token
           .connect(roles.dao)
           .updateBurnerStatus(false)
-      ).to.be.revertedWith("Input will not update status");
+      ).to.be.revertedWith("Input will not update state");
       await api3Token
         .connect(roles.dao)
         .updateBurnerStatus(true);
@@ -168,7 +168,7 @@ describe("updateBurnerStatus", function () {
         api3Token
           .connect(roles.dao)
           .updateBurnerStatus(true)
-      ).to.be.revertedWith("Input will not update status");
+      ).to.be.revertedWith("Input will not update state");
     });
   });
 });
