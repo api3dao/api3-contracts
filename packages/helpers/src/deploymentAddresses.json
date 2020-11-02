@@ -1,0 +1,14 @@
+{
+  "api3DaoVault": {
+    "1": "0",
+    "4": "0x0c26bb185ad09c5a41e8fd127bf7b8c99e81e5dc"
+  },
+  "api3Token": {
+    "1": "0",
+    "4": "0x8878C14cFC1233db8AeDc09d497b7fb95ba96fD4"
+  },
+  "timelockManager": {
+    "1": "0",
+    "4": "0x2176D77Fd2D445DA01E004e93ac040eFc8ef805A"
+  }
+}
