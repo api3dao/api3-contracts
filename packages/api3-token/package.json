@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "scripts": {
     "build": "buidler compile",
+    "test": "buidler test",
+    "test:coverage": "buidler coverage",
     "deploy-token:mainnet": "buidler deploy --tags deploy --network mainnet",
     "deploy-token:rinkeby": "buidler deploy --tags deploy --network rinkeby",
     "deposit-token:mainnet": "buidler deploy --tags deposit-token --network mainnet",
@@ -10,8 +12,7 @@
     "approve-token:mainnet": "buidler deploy --tags approve-token --network mainnet",
     "approve-token:rinkeby": "buidler deploy --tags approve-token --network rinkeby",
     "flatten": "truffle-flattener ./contracts/Api3Token.sol > Api3Token.flat.sol && npm run flatten:delete-license-lines",
-    "flatten:delete-license-lines": "sed --in-place '/SPDX-License-Identifier/d' Api3Token.flat.sol",
-    "test": "buidler test"
+    "flatten:delete-license-lines": "sed --in-place '/SPDX-License-Identifier/d' Api3Token.flat.sol"
   },
   "devDependencies": {
     "@api3-contracts/helpers": "^0.1.0",
@@ -24,6 +25,7 @@
     "dotenv": "^8.2.0",
     "ethereum-waffle": "^3.0.2",
     "ethers": "^5.0.7",
+    "solidity-coverage": "^0.7.11",
     "truffle-flattener": "^1.5.0"
   }
 }

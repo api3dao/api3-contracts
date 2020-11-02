@@ -2,16 +2,17 @@
   "name": "@api3-contracts/timelock-manager",
   "version": "0.1.0",
   "scripts": {
+    "build": "buidler compile && npm run copy-artifacts:api3-token && npm run copy-artifacts:api3-pool",
     "copy-artifacts:api3-token": "cp -a ../api3-token/artifacts/. ./artifacts/",
     "copy-artifacts:api3-pool": "cp -a ../api3-pool/artifacts/. ./artifacts/",
-    "build": "buidler compile && npm run copy-artifacts:api3-token && npm run copy-artifacts:api3-pool",
+    "test": "buidler test",
+    "test:coverage": "buidler coverage",
     "deploy:mainnet": "buidler deploy --tags deploy --network mainnet",
     "deploy:rinkeby": "buidler deploy --tags deploy --network rinkeby",
     "transfer-and-lock:mainnet": "buidler deploy --tags transfer-and-lock --network mainnet",
     "transfer-and-lock:rinkeby": "buidler deploy --tags transfer-and-lock --network rinkeby",
     "flatten": "truffle-flattener ./contracts/TimelockManager.sol > TimelockManager.flat.sol && npm run flatten:delete-license-lines",
-    "flatten:delete-license-lines": "sed --in-place '/SPDX-License-Identifier/d' TimelockManager.flat.sol",
-    "test": "buidler test"
+    "flatten:delete-license-lines": "sed --in-place '/SPDX-License-Identifier/d' TimelockManager.flat.sol"
   },
   "devDependencies": {
     "@api3-contracts/api3-pool": "^0.1.0",
@@ -25,6 +26,7 @@
     "chai": "^4.2.0",
     "ethereum-waffle": "^3.0.2",
     "ethers": "^5.0.7",
+    "solidity-coverage": "^0.7.11",
     "truffle-flattener": "^1.5.0"
   }
 }

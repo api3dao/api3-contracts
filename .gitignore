@@ -3,6 +3,9 @@
 # Buidler
 **/cache/**
 **/artifacts/**
+**/coverage/**
+coverage.json
+
 .env
 
 *.flat.sol
