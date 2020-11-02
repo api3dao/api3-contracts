@@ -54,6 +54,11 @@ interface ITimelockManager {
         )
         external;
 
+    function getWithdrawable(address recipient)
+        external
+        view
+        returns(uint256 withdrawable);
+
     function getTimelock(address recipient)
         external
         view
