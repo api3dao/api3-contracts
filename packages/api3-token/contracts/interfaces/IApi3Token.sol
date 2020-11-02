@@ -10,10 +10,18 @@ interface IApi3Token is IERC20 {
         bool minterStatus
         );
 
+    event BurnerStatusUpdated(
+        address indexed burnerAddress,
+        bool burnerStatus
+        );
+
     function updateMinterStatus(
         address minterAddress,
         bool minterStatus
         )
+        external;
+
+    function updateBurnerStatus(bool burnerStatus)
         external;
 
     function mint(
@@ -29,4 +37,9 @@ interface IApi3Token is IERC20 {
         external
         view
         returns(bool minterStatus);
+
+    function getBurnerStatus(address burnerAddress)
+        external
+        view
+        returns(bool burnerStatus);
 }

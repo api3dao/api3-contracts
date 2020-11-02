@@ -21,6 +21,10 @@ import "./interfaces/ITimelockManager.sol";
 contract TimelockManager is Ownable, ITimelockManager {
     using SafeMath for uint256;
 
+    /// @dev If an address has allowed the owner of this contract (i.e., the
+    /// API3 DAO) to cancel their timelock
+    mapping(address => bool) private allowedTimelockToBeReverted;
+
     struct Timelock {
         uint256 totalAmount;
         uint256 remainingAmount;
@@ -55,8 +59,57 @@ contract TimelockManager is Ownable, ITimelockManager {
         override
         onlyOwner
     {
+        require(
+            address(api3Pool) != api3PoolAddress,
+            "Input will not update state"
+        );
         api3Pool = IApi3Pool(api3PoolAddress);
         emit Api3PoolUpdated(api3PoolAddress);
+    }
+
+    function revertTimelock(
+        address recipient,
+        address destination
+        )
+        external
+        override
+        onlyOwner
+        onlyIfRecipientHasRemainingTokens(recipient)
+    {
+        require(
+            destination != address(0),
+            "Invalid destination"
+            );
+        require(
+            allowedTimelockToBeReverted[recipient],
+            "Recipient did not allow timelock to be reverted"
+            );
+        // Reset permission automatically
+        allowedTimelockToBeReverted[recipient] = false;
+        uint256 remaining = timelocks[recipient].remainingAmount;
+        timelocks[recipient].remainingAmount = 0;
+        require(
+            api3Token.transfer(destination, remaining),
+            "API3 token transfer failed"
+            );
+        emit RevertedTimelock(recipient, destination, remaining);
+    }
+
+    /// @notice Allows the owner (i.e., API3 DAO) to revert the caller's
+    /// timelock
+    /// @dev To be used when the timelock has been created with incorrect
+    /// parameters (for example with releaseEnd at infinity)
+    function allowTimelockToBeReverted()
+        external
+        override
+        onlyIfRecipientHasRemainingTokens(msg.sender)
+    {
+        require(
+            !allowedTimelockToBeReverted[msg.sender],
+            "Timelock already allowed to be reverted"
+        );
+        allowedTimelockToBeReverted[msg.sender] = true;
+        emit AllowedTimelockToBeReverted(msg.sender);
     }
 
     /// @notice Transfers API3 tokens to this contract and timelocks them
@@ -88,22 +141,26 @@ contract TimelockManager is Ownable, ITimelockManager {
             releaseEnd > releaseStart,
             "releaseEnd has to be larger than releaseStart"
             );
+        require(
+            releaseStart > now,
+            "releaseStart has to be in the future"
+            );
         timelocks[recipient] = Timelock({
             totalAmount: amount,
             remainingAmount: amount,
             releaseStart: releaseStart,
             releaseEnd: releaseEnd
             });
+        require(
+            api3Token.transferFrom(source, address(this), amount),
+            "API3 token transferFrom failed"
+            );
         emit TransferredAndLocked(
             source,
             recipient,
             amount,
             releaseStart,
             releaseEnd
-            );
-        require(
-            api3Token.transferFrom(source, address(this), amount),
-            "API3 token transferFrom failed"
             );
     }
 
@@ -150,11 +207,9 @@ contract TimelockManager is Ownable, ITimelockManager {
     }
 
     /// @notice Used by the recipient to withdraw tokens
-    /// @param destination Address that will receive the tokens
-    function withdraw(address destination)
+    function withdraw()
         external
         override
-        onlyIfDestinationIsValid(destination)
         onlyIfRecipientHasRemainingTokens(msg.sender)
     {
         address recipient = msg.sender;
@@ -164,13 +219,13 @@ contract TimelockManager is Ownable, ITimelockManager {
             "No withdrawable tokens yet"
             );
         timelocks[recipient].remainingAmount = timelocks[recipient].remainingAmount.sub(withdrawable);
+        require(
+            api3Token.transfer(recipient, withdrawable),
+            "API3 token transfer failed"
+            );
         emit Withdrawn(
             recipient,
-            destination
-            );
-        require(
-            api3Token.transfer(destination, withdrawable),
-            "API3 token transfer failed"
+            withdrawable
             );
     }
 
@@ -203,11 +258,6 @@ contract TimelockManager is Ownable, ITimelockManager {
         uint256 remaining = timelocks[recipient].remainingAmount;
         uint256 timelocked = remaining.sub(withdrawable);
         timelocks[recipient].remainingAmount = 0;
-        emit WithdrawnToPool(
-            recipient,
-            api3PoolAddress,
-            beneficiary
-            );
         // Approve the total amount
         api3Token.approve(address(api3Pool), remaining);
         // Deposit the funds that are withdrawable without vesting
@@ -229,6 +279,11 @@ contract TimelockManager is Ownable, ITimelockManager {
             now > timelocks[recipient].releaseStart ? now : timelocks[recipient].releaseStart,
             timelocks[recipient].releaseEnd
             );
+        emit WithdrawnToPool(
+            recipient,
+            api3PoolAddress,
+            beneficiary
+            );
     }
 
     /// @notice Returns the amount of tokens a recipient can currently withdraw
@@ -237,6 +292,7 @@ contract TimelockManager is Ownable, ITimelockManager {
     function getWithdrawable(address recipient)
         public
         view
+        override
         returns(uint256 withdrawable)
     {
         Timelock storage timelock = timelocks[recipient];
@@ -310,14 +366,16 @@ contract TimelockManager is Ownable, ITimelockManager {
         remainingAmount = timelocks[recipient].remainingAmount;
     }
 
-    /// @dev Reverts if the destination is address(0)
-    modifier onlyIfDestinationIsValid(address destination)
+    /// @notice Returns if the recipient's timelock is revertible
+    /// @param recipient Recipient of tokens
+    /// @return revertStatus If the recipient's timelock is revertible
+    function getIfTimelockIsRevertible(address recipient)
+        external
+        view
+        override
+        returns (bool revertStatus)
     {
-        require(
-            destination != address(0),
-            "Invalid destination"
-            );
-        _;
+        revertStatus = allowedTimelockToBeReverted[recipient];
     }
 
     /// @dev Reverts if the recipient does not have remaining tokens

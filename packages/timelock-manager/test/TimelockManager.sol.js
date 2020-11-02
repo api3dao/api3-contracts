@@ -104,18 +104,28 @@ describe("constructor", function () {
 });
 
 describe("updateApi3Pool", function () {
-  context("If the caller is the DAO", async function () {
-    it("updates the pool address", async function () {
-      const newPoolAddress = "0x0000000000000000000000000000000000000001";
-      await expect(
-        timelockManager.connect(roles.dao).updateApi3Pool(newPoolAddress)
-      )
-        .to.emit(timelockManager, "Api3PoolUpdated")
-        .withArgs(newPoolAddress);
-      expect(await timelockManager.api3Pool()).to.equal(newPoolAddress);
+  context("Caller is the DAO", async function () {
+    context("Input will update state", async function () {
+      it("updates the pool address", async function () {
+        const newPoolAddress = "0x0000000000000000000000000000000000000001";
+        await expect(
+          timelockManager.connect(roles.dao).updateApi3Pool(newPoolAddress)
+        )
+          .to.emit(timelockManager, "Api3PoolUpdated")
+          .withArgs(newPoolAddress);
+        expect(await timelockManager.api3Pool()).to.equal(newPoolAddress);
+      });
+    });
+    context("Input will not update state", async function () {
+      it("reverts", async function () {
+        const oldPoolAddress = "0x0000000000000000000000000000000000000000";
+        await expect(
+          timelockManager.connect(roles.dao).updateApi3Pool(oldPoolAddress)
+        ).to.be.revertedWith("Input will not update state");
+      });
     });
   });
-  context("If the caller is not the DAO", async function () {
+  context("Caller is not the DAO", async function () {
     it("reverts", async function () {
       const newPoolAddress = "0x0000000000000000000000000000000000000001";
       await expect(
@@ -127,8 +137,141 @@ describe("updateApi3Pool", function () {
   });
 });
 
+describe("revertTimelock", function () {
+  context("Caller is the DAO", async function () {
+    context("Recipient has remaining tokens", async function () {
+      context("Destination is valid", async function () {
+        context(
+          "Recipient has allowed their timelock to be reverted",
+          async function () {
+            it("reverts the timelock successfully", async function () {
+              await batchDeployTimelocks();
+              await timelockManager
+                .connect(roles.recipient1)
+                .allowTimelockToBeReverted();
+              const initialBalance = await api3Token.balanceOf(
+                roles.dao._address
+              );
+              const remainingAmount = await timelockManager.getRemainingAmount(
+                roles.recipient1._address
+              );
+              await expect(
+                timelockManager
+                  .connect(roles.dao)
+                  .revertTimelock(roles.recipient1._address, roles.dao._address)
+              )
+                .to.emit(timelockManager, "RevertedTimelock")
+                .withArgs(
+                  roles.recipient1._address,
+                  roles.dao._address,
+                  remainingAmount
+                );
+              expect(
+                await timelockManager.getRemainingAmount(
+                  roles.recipient1._address
+                )
+              ).to.equal(0);
+              const finalBalance = await api3Token.balanceOf(
+                roles.dao._address
+              );
+              expect(finalBalance.sub(initialBalance)).to.equal(
+                remainingAmount
+              );
+            });
+          }
+        );
+        context(
+          "Recipient has not allowed their timelock to be reverted",
+          async function () {
+            it("reverts", async function () {
+              await batchDeployTimelocks();
+              await expect(
+                timelockManager
+                  .connect(roles.dao)
+                  .revertTimelock(roles.recipient1._address, roles.dao._address)
+              ).to.be.revertedWith(
+                "Recipient did not allow timelock to be reverted"
+              );
+            });
+          }
+        );
+      });
+      context("Destination is not valid", async function () {
+        it("reverts", async function () {
+          await batchDeployTimelocks();
+          await expect(
+            timelockManager
+              .connect(roles.dao)
+              .revertTimelock(
+                roles.recipient1._address,
+                ethers.constants.AddressZero
+              )
+          ).to.be.revertedWith("Invalid destination");
+        });
+      });
+    });
+    context("Recipient does not have remaining tokens", async function () {
+      it("reverts", async function () {
+        await expect(
+          timelockManager
+            .connect(roles.dao)
+            .revertTimelock(roles.randomPerson._address, roles.dao._address)
+        ).to.be.revertedWith("Recipient does not have remaining tokens");
+      });
+    });
+  });
+  context("Caller is not the DAO", async function () {
+    it("reverts", async function () {
+      await expect(
+        timelockManager
+          .connect(roles.randomPerson)
+          .revertTimelock(
+            roles.recipient1._address,
+            roles.randomPerson._address
+          )
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+});
+
+describe("allowTimelockToBeReverted", function () {
+  context("Caller has remaining tokens", async function () {
+    it("Allows caller's timelock to be revertible", async function () {
+      await batchDeployTimelocks();
+      await expect(
+        timelockManager.connect(roles.recipient1).allowTimelockToBeReverted()
+      )
+        .to.emit(timelockManager, "AllowedTimelockToBeReverted")
+        .withArgs(roles.recipient1._address);
+      expect(
+        await timelockManager.getIfTimelockIsRevertible(
+          roles.recipient1._address
+        )
+      ).to.equal(true);
+    });
+    context("Caller's timelock is already revertible", async function () {
+      it("reverts", async function () {
+        await batchDeployTimelocks();
+        await timelockManager
+          .connect(roles.recipient1)
+          .allowTimelockToBeReverted();
+        await expect(
+          timelockManager.connect(roles.recipient1).allowTimelockToBeReverted()
+        ).to.be.revertedWith("Timelock already allowed to be reverted");
+      });
+    });
+  });
+  context("Caller does not have remaining tokens", async function () {
+    it("reverts", async function () {
+      await expect(
+        timelockManager.connect(roles.recipient1).allowTimelockToBeReverted()
+      ).to.be.revertedWith("Recipient does not have remaining tokens");
+    });
+  });
+});
+
 describe("transferAndLock", function () {
-  context("If the caller is the DAO", async function () {
+  context("Caller is the DAO", async function () {
     it("transfers and locks tokens", async function () {
       // Approve enough tokens to cover all timelocks
       await api3Token.connect(roles.dao).approve(
@@ -164,7 +307,7 @@ describe("transferAndLock", function () {
       }
       await verifyDeployedTimelocks();
     });
-    context("If the recipient has remaining tokens", async function () {
+    context("Recipient has remaining tokens", async function () {
       it("reverts", async function () {
         await api3Token
           .connect(roles.dao)
@@ -191,7 +334,7 @@ describe("transferAndLock", function () {
         ).to.be.revertedWith("Recipient has remaining tokens");
       });
     });
-    context("If the transferred and locked amount is 0", async function () {
+    context("Transferred and locked amount is 0", async function () {
       it("reverts", async function () {
         await expect(
           timelockManager
@@ -206,7 +349,7 @@ describe("transferAndLock", function () {
         ).to.be.revertedWith("Amount cannot be 0");
       });
     });
-    context("If releaseStart is larger than releaseEnd", async function () {
+    context("releaseStart is larger than releaseEnd", async function () {
       it("reverts", async function () {
         await expect(
           timelockManager.connect(roles.dao).transferAndLock(
@@ -220,8 +363,21 @@ describe("transferAndLock", function () {
         ).to.be.revertedWith("releaseEnd has to be larger than releaseStart");
       });
     });
+    context("releaseStart is smaller than now", async function () {
+      it("reverts", async function () {
+        await expect(
+          timelockManager.connect(roles.dao).transferAndLock(
+            roles.dao._address,
+            timelocks[0].recipient,
+            timelocks[0].amount,
+            0,
+            timelocks[0].releaseEnd
+          )
+        ).to.be.revertedWith("releaseStart has to be in the future");
+      });
+    });
   });
-  context("If the caller is not the DAO", async function () {
+  context("Caller is not the DAO", async function () {
     it("reverts", async function () {
       await expect(
         timelockManager
@@ -239,7 +395,7 @@ describe("transferAndLock", function () {
 });
 
 describe("transferAndLockMultiple", function () {
-  context("If the caller is the DAO", async function () {
+  context("Caller is the DAO", async function () {
     it("batch-transfers and locks tokens", async function () {
       await batchDeployTimelocks();
       await verifyDeployedTimelocks();
@@ -296,7 +452,7 @@ describe("transferAndLockMultiple", function () {
       });
     });
   });
-  context("If the caller is not the DAO", async function () {
+  context("Caller is not the DAO", async function () {
     it("reverts", async function () {
       await expect(
         timelockManager.connect(roles.randomPerson).transferAndLockMultiple(
@@ -312,7 +468,7 @@ describe("transferAndLockMultiple", function () {
 });
 
 describe("withdraw", function () {
-  context("If the caller is the recipient", async function () {
+  context("Caller is the recipient", async function () {
     context("After releaseTime", async function () {
       it("withdraws (test uses evm_setNextBlockTimestamp)", async function () {
         await batchDeployTimelocks();
@@ -338,10 +494,10 @@ describe("withdraw", function () {
           await expect(
             timelockManager
               .connect(recipientRole)
-              .withdraw(recipientRole._address)
+              .withdraw()
           )
             .to.emit(timelockManager, "Withdrawn")
-            .withArgs(recipientRole._address, recipientRole._address);
+            .withArgs(recipientRole._address, timelock.amount);
           // Check if the withdrawal was successful
           const afterBalance = await api3Token.balanceOf(
             recipientRole._address
@@ -350,7 +506,7 @@ describe("withdraw", function () {
         }
       });
       context(
-        "If the recipient attempts to withdraw a second time",
+        "Recipient attempts to withdraw a second time",
         async function () {
           it("reverts (test uses evm_setNextBlockTimestamp)", async function () {
             await batchDeployTimelocks();
@@ -364,7 +520,7 @@ describe("withdraw", function () {
             );
             await timelockManager
               .connect(recipientRole)
-              .withdraw(recipientRole._address);
+              .withdraw();
             // Verify that the withdrawn timelock amount is depleted
             const retrievedTimelock = await timelockManager.getTimelock(
               recipientRole._address
@@ -374,28 +530,8 @@ describe("withdraw", function () {
             await expect(
               timelockManager
                 .connect(recipientRole)
-                .withdraw(recipientRole._address)
+                .withdraw()
             ).to.be.revertedWith("Recipient does not have remaining tokens");
-          });
-        }
-      );
-      context(
-        "If the recipient attempts to withdraw to address 0",
-        async function () {
-          it("reverts (test uses evm_setNextBlockTimestamp)", async function () {
-            await batchDeployTimelocks();
-            const timelock = timelocks[0];
-            await ethers.provider.send("evm_setNextBlockTimestamp", [
-              timelock.releaseEnd.toNumber() + 1,
-            ]);
-            const recipientRole = Object.values(roles).find(
-              (role) => role._address == timelock.recipient
-            );
-            await expect(
-              timelockManager
-                .connect(recipientRole)
-                .withdraw(ethers.constants.AddressZero)
-            ).to.be.revertedWith("Invalid destination");
           });
         }
       );
@@ -410,7 +546,7 @@ describe("withdraw", function () {
         await expect(
           timelockManager
             .connect(recipientRole)
-            .withdraw(roles.recipient1._address)
+            .withdraw()
         ).to.be.revertedWith("No withdrawable tokens yet");
       });
     });
@@ -434,10 +570,10 @@ describe("withdraw", function () {
         await expect(
           timelockManager
             .connect(recipientRole)
-            .withdraw(recipientRole._address)
+            .withdraw()
         )
           .to.emit(timelockManager, "Withdrawn")
-          .withArgs(recipientRole._address, recipientRole._address);
+          .withArgs(recipientRole._address, timelock.amount.div(2));
         // Check if the withdrawal was successful
         const duringBalance = await api3Token.balanceOf(recipientRole._address);
         // Verify that the recipient recieved half of the amount
@@ -451,21 +587,21 @@ describe("withdraw", function () {
         await expect(
           timelockManager
             .connect(recipientRole)
-            .withdraw(recipientRole._address)
+            .withdraw()
         )
           .to.emit(timelockManager, "Withdrawn")
-          .withArgs(recipientRole._address, recipientRole._address);
+          .withArgs(recipientRole._address, timelock.amount.div(2));
         const afterBalance = await api3Token.balanceOf(recipientRole._address);
         expect(afterBalance.sub(previousBalance)).to.equal(timelock.amount);
       });
     });
-    context("If the timelock does not exist", async function () {
+    context("Timelock does not exist", async function () {
       it("reverts", async function () {
         await batchDeployTimelocks();
         await expect(
           timelockManager
             .connect(roles.randomPerson)
-            .withdraw(roles.randomPerson._address)
+            .withdraw()
         ).to.be.revertedWith("Recipient does not have remaining tokens");
       });
     });
@@ -474,7 +610,7 @@ describe("withdraw", function () {
 
 describe("withdrawToPool", function () {
   context("After DAO has set the pool address", async function () {
-    context("If the caller is the owner", async function () {
+    context("Caller is the recipient", async function () {
       it("withdraws to pool", async function () {
         await batchDeployTimelocks();
         await timelockManager
@@ -500,7 +636,7 @@ describe("withdrawToPool", function () {
         }
       });
       context(
-        "If the recipient attempts to withdraw to pool a second time",
+        "Recipient attempts to withdraw to pool a second time",
         async function () {
           it("reverts", async function () {
             await batchDeployTimelocks();
@@ -530,7 +666,7 @@ describe("withdrawToPool", function () {
         }
       );
       context(
-        "If the recipient attempts to withdraw to benefit address 0",
+        "Recipient attempts to withdraw to benefit address 0",
         async function () {
           it("reverts", async function () {
             await batchDeployTimelocks();
@@ -550,7 +686,7 @@ describe("withdrawToPool", function () {
         }
       );
       context(
-        "If the owner provides the wrong pool address",
+        "Recipient provides the wrong pool address",
         async function () {
           it("reverts", async function () {
             await batchDeployTimelocks();
@@ -573,7 +709,7 @@ describe("withdrawToPool", function () {
         }
       );
     });
-    context("If the timelock does not exist", async function () {
+    context("Timelock does not exist", async function () {
       it("reverts", async function () {
         await batchDeployTimelocks();
         await timelockManager
@@ -588,7 +724,7 @@ describe("withdrawToPool", function () {
     });
   });
   context("Before DAO has set the pool address", async function () {
-    context("If the caller is the recipient", async function () {
+    context("Caller is the recipient", async function () {
       it("reverts", async function () {
         await batchDeployTimelocks();
         const timelock = timelocks[0];

@@ -11,7 +11,13 @@ import "./interfaces/IApi3Token.sol";
 /// minting privileges to addresses. Any account is allowed to burn tokens.
 contract Api3Token is ERC20, Ownable, IApi3Token {
     /// @dev If an address is authorized to mint tokens
+    /// Token minting authorization is granted by the token contract owner
+    /// (i.e., the API3 DAO).
     mapping(address => bool) private isMinter;
+    /// @dev If an address is authorized to burn tokens
+    /// Token burning authorization is granted by the address itself (i.e.,
+    /// anyone can declare themselves a token burner)
+    mapping(address => bool) private isBurner;
 
     /// @param contractOwner Address that will receive the ownership of the
     /// token contract
@@ -24,9 +30,18 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         ERC20("API3", "API3")
         {
             transferOwnership(contractOwner);
-            // Initial supply is 100 million (1e8)
-            _mint(mintingDestination, 1e8 * 1e18);
+            // Initial supply is 100 million (100e6)
+            // We are using ether because the token has 18 decimals like ETH
+            _mint(mintingDestination, 100e6 ether);
         }
+
+    function renounceOwnership()
+        public
+        override
+        onlyOwner
+    {
+        revert("Ownership cannot be renounced");
+    }
 
     /// @notice Updates if an address is authorized to mint tokens
     /// @param minterAddress Address whose minter authorization status will be
@@ -40,8 +55,26 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         override
         onlyOwner
     {
+        require(
+            isMinter[minterAddress] != minterStatus,
+            "Input will not update state"
+            );
         isMinter[minterAddress] = minterStatus;
         emit MinterStatusUpdated(minterAddress, minterStatus);
+    }
+
+    /// @notice Updates the caller is authorized to burn tokens
+    /// @param burnerStatus Updated minter authorization status
+    function updateBurnerStatus(bool burnerStatus)
+        external
+        override
+    {
+        require(
+            isBurner[msg.sender] != burnerStatus,
+            "Input will not update state"
+            );
+        isBurner[msg.sender] = burnerStatus;
+        emit BurnerStatusUpdated(msg.sender, burnerStatus);
     }
 
     /// @notice Mints tokens
@@ -64,6 +97,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         external
         override
     {
+        require(isBurner[msg.sender], "Only burners are allowed to burn");
         _burn(msg.sender, amount);
     }
 
@@ -78,5 +112,18 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         returns(bool minterStatus)
     {
         minterStatus = isMinter[minterAddress];
+    }
+
+    /// @notice Returns if an address is authorized to burn tokens
+    /// @param burnerAddress Address whose burner authorization status will be
+    /// returned
+    /// @return burnerStatus Burner authorization status
+    function getBurnerStatus(address burnerAddress)
+        external
+        view
+        override
+        returns(bool burnerStatus)
+    {
+        burnerStatus = isBurner[burnerAddress];
     }
 }

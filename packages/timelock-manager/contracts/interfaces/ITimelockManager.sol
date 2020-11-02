@@ -5,26 +5,43 @@ pragma solidity 0.6.12;
 interface ITimelockManager {
     event Api3PoolUpdated(address api3PoolAddress);
 
+    event RevertedTimelock(
+        address indexed recipient,
+        address destination,
+        uint256 amount
+        );
+
+    event AllowedTimelockToBeReverted(address recipient);
+
     event TransferredAndLocked(
         address source,
         address indexed recipient,
         uint256 amount,
         uint256 releaseStart,
         uint256 releaseEnd
-    );
+        );
 
     event Withdrawn(
         address indexed recipient,
-        address destination
-    );
+        uint256 amount
+        );
 
     event WithdrawnToPool(
         address indexed recipient,
         address api3PoolAddress,
         address beneficiary
-    );
+        );
 
     function updateApi3Pool(address api3PoolAddress)
+        external;
+
+    function revertTimelock(
+        address recipient,
+        address destination
+        )
+        external;
+
+    function allowTimelockToBeReverted()
         external;
 
     function transferAndLock(
@@ -45,7 +62,7 @@ interface ITimelockManager {
         )
         external;
 
-    function withdraw(address destination)
+    function withdraw()
         external;
 
     function withdrawToPool(
@@ -53,6 +70,11 @@ interface ITimelockManager {
         address beneficiary
         )
         external;
+
+    function getWithdrawable(address recipient)
+        external
+        view
+        returns(uint256 withdrawable);
 
     function getTimelock(address recipient)
         external
@@ -68,4 +90,9 @@ interface ITimelockManager {
         external
         view
         returns (uint256 remainingAmount);
+
+    function getIfTimelockIsRevertible(address recipient)
+        external
+        view
+        returns (bool revertStatus);
 }

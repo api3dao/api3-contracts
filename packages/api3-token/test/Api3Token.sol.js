@@ -17,6 +17,10 @@ beforeEach(async () => {
 
 describe("constructor", function () {
   it("deploys correctly", async function () {
+    expect(await api3Token.name()).to.equal("API3");
+    expect(await api3Token.symbol()).to.equal("API3");
+    expect(await api3Token.decimals()).to.equal(18);
+
     expect(await api3Token.owner()).to.equal(roles.dao._address);
 
     const expectedTotalSupply = ethers.utils.parseEther((1e8).toString());
@@ -28,10 +32,27 @@ describe("constructor", function () {
   });
 });
 
+describe("renounceOwnership", function () {
+  context("If the caller is the DAO", async function () {
+    it("reverts", async function () {
+      await expect(
+        api3Token.connect(roles.dao).renounceOwnership()
+      ).to.be.revertedWith("Ownership cannot be renounced");
+    });
+  });
+  context("If the caller is not the DAO", async function () {
+    it("reverts", async function () {
+      await expect(
+        api3Token.connect(roles.randomPerson).renounceOwnership()
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+});
+
 describe("updateMinterStatus", function () {
   context("If the caller is the DAO", async function () {
     it("can be used to give minting authorization", async function () {
-      // Authorizer minter to mint
+      // Authorize minter to mint
       await expect(
         api3Token
           .connect(roles.dao)
@@ -81,6 +102,23 @@ describe("updateMinterStatus", function () {
           )
       ).to.be.revertedWith("Only minters are allowed to mint");
     });
+    context("If the input will not update state", async function () {
+      it("reverts", async function () {
+        await expect(
+          api3Token
+            .connect(roles.dao)
+            .updateMinterStatus(roles.minter._address, false)
+        ).to.be.revertedWith("Input will not update state");
+        await api3Token
+          .connect(roles.dao)
+          .updateMinterStatus(roles.minter._address, true);
+        await expect(
+          api3Token
+            .connect(roles.dao)
+            .updateMinterStatus(roles.minter._address, true)
+        ).to.be.revertedWith("Input will not update state");
+      });
+    });
   });
   context("If the caller is not the DAO", async function () {
     it("reverts", async function () {
@@ -89,6 +127,30 @@ describe("updateMinterStatus", function () {
           .connect(roles.randomPerson)
           .updateMinterStatus(roles.minter._address, true)
       ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+});
+
+describe("updateBurnerStatus", function () {
+  it("can be used to claim and renounce burning authorization", async function () {
+    await expect(api3Token.connect(roles.dao).updateBurnerStatus(true))
+      .to.emit(api3Token, "BurnerStatusUpdated")
+      .withArgs(roles.dao._address, true);
+    expect(await api3Token.getBurnerStatus(roles.dao._address)).to.equal(true);
+    await expect(api3Token.connect(roles.dao).updateBurnerStatus(false))
+      .to.emit(api3Token, "BurnerStatusUpdated")
+      .withArgs(roles.dao._address, false);
+    expect(await api3Token.getBurnerStatus(roles.dao._address)).to.equal(false);
+  });
+  context("If the input will not update state", async function () {
+    it("reverts", async function () {
+      await expect(
+        api3Token.connect(roles.dao).updateBurnerStatus(false)
+      ).to.be.revertedWith("Input will not update state");
+      await api3Token.connect(roles.dao).updateBurnerStatus(true);
+      await expect(
+        api3Token.connect(roles.dao).updateBurnerStatus(true)
+      ).to.be.revertedWith("Input will not update state");
     });
   });
 });
@@ -112,13 +174,27 @@ describe("mint", function () {
 });
 
 describe("burn", function () {
-  it("burns sender's tokens", async function () {
-    const amountToBurn = ethers.utils.parseEther((1e3).toString());
-    const initialBalance = await api3Token.balanceOf(roles.dao._address);
-    await api3Token
-      .connect(roles.dao)
-      .burn(ethers.utils.parseEther((1e3).toString()));
-    const finalBalance = await api3Token.balanceOf(roles.dao._address);
-    expect(initialBalance.sub(finalBalance)).to.equal(amountToBurn);
+  context("Caller is authorized to burn tokens", async function () {
+    it("burns caller's tokens", async function () {
+      await expect(api3Token.connect(roles.dao).updateBurnerStatus(true))
+        .to.emit(api3Token, "BurnerStatusUpdated")
+        .withArgs(roles.dao._address, true);
+      const amountToBurn = ethers.utils.parseEther((1e3).toString());
+      const initialBalance = await api3Token.balanceOf(roles.dao._address);
+      await api3Token
+        .connect(roles.dao)
+        .burn(ethers.utils.parseEther((1e3).toString()));
+      const finalBalance = await api3Token.balanceOf(roles.dao._address);
+      expect(initialBalance.sub(finalBalance)).to.equal(amountToBurn);
+    });
+  });
+  context("Caller is not authorized to burn tokens", async function () {
+    it("reverts", async function () {
+      await expect(
+        api3Token
+          .connect(roles.dao)
+          .burn(ethers.utils.parseEther((1e3).toString()))
+      ).to.be.revertedWith("Only burners are allowed to burn");
+    });
   });
 });
