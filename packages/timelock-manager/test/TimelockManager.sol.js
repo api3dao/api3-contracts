@@ -120,11 +120,9 @@ describe("updateApi3Pool", function () {
       it("reverts", async function () {
         const oldPoolAddress = "0x0000000000000000000000000000000000000000";
         await expect(
-          timelockManager
-            .connect(roles.dao)
-            .updateApi3Pool(oldPoolAddress)
+          timelockManager.connect(roles.dao).updateApi3Pool(oldPoolAddress)
         ).to.be.revertedWith("Input will not update state");
-        });
+      });
     });
   });
   context("If the caller is not the DAO", async function () {
@@ -135,6 +133,138 @@ describe("updateApi3Pool", function () {
           .connect(roles.randomPerson)
           .updateApi3Pool(newPoolAddress)
       ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+});
+
+describe("revertTimelock", function () {
+  context("Caller is the DAO", async function () {
+    context("Destination is valid", async function () {
+      context("Recipient has remaining tokens", async function () {
+        context(
+          "Recipient has allowed their timelock to be reverted",
+          async function () {
+            it("reverts the timelock successfully", async function () {
+              await batchDeployTimelocks();
+              await timelockManager
+                .connect(roles.recipient1)
+                .allowTimelockToBeReverted();
+              const initialBalance = await api3Token.balanceOf(
+                roles.dao._address
+              );
+              const remainingAmount = await timelockManager.getRemainingAmount(
+                roles.recipient1._address
+              );
+              await expect(
+                timelockManager
+                  .connect(roles.dao)
+                  .revertTimelock(roles.recipient1._address, roles.dao._address)
+              )
+                .to.emit(timelockManager, "RevertedTimelock")
+                .withArgs(
+                  roles.recipient1._address,
+                  roles.dao._address,
+                  remainingAmount
+                );
+              expect(
+                await timelockManager.getRemainingAmount(
+                  roles.recipient1._address
+                )
+              ).to.equal(0);
+              const finalBalance = await api3Token.balanceOf(
+                roles.dao._address
+              );
+              expect(finalBalance.sub(initialBalance)).to.equal(
+                remainingAmount
+              );
+            });
+          }
+        );
+        context(
+          "Recipient has not allowed their timelock to be reverted",
+          async function () {
+            it("reverts", async function () {
+              await batchDeployTimelocks();
+              await expect(
+                timelockManager
+                  .connect(roles.dao)
+                  .revertTimelock(roles.recipient1._address, roles.dao._address)
+              ).to.be.revertedWith(
+                "Recipient did not allow timelock to be reverted"
+              );
+            });
+          }
+        );
+      });
+      context("Recipient does not have remaining tokens", async function () {
+        it("reverts", async function () {
+          await expect(
+            timelockManager
+              .connect(roles.dao)
+              .revertTimelock(roles.randomPerson._address, roles.dao._address)
+          ).to.be.revertedWith("Recipient does not have remaining tokens");
+        });
+      });
+    });
+    context("Destination is not valid", async function () {
+      it("reverts", async function () {
+        await expect(
+          timelockManager
+            .connect(roles.dao)
+            .revertTimelock(
+              roles.recipient1._address,
+              ethers.constants.AddressZero
+            )
+        ).to.be.revertedWith("Invalid destination");
+      });
+    });
+  });
+  context("Caller is not the DAO", async function () {
+    it("reverts", async function () {
+      await expect(
+        timelockManager
+          .connect(roles.randomPerson)
+          .revertTimelock(
+            roles.recipient1._address,
+            roles.randomPerson._address
+          )
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+});
+
+describe("allowTimelockToBeReverted", function () {
+  context("Caller has remaining tokens", async function () {
+    it("Allows caller's timelock to be revertible", async function () {
+      await batchDeployTimelocks();
+      await expect(
+        timelockManager.connect(roles.recipient1).allowTimelockToBeReverted()
+      )
+        .to.emit(timelockManager, "AllowedTimelockToBeReverted")
+        .withArgs(roles.recipient1._address);
+      expect(
+        await timelockManager.getIfTimelockIsRevertible(
+          roles.recipient1._address
+        )
+      ).to.equal(true);
+    });
+    context("Caller's timelock is already revertible", async function () {
+      it("reverts", async function () {
+        await batchDeployTimelocks();
+        await timelockManager
+          .connect(roles.recipient1)
+          .allowTimelockToBeReverted();
+        await expect(
+          timelockManager.connect(roles.recipient1).allowTimelockToBeReverted()
+        ).to.be.revertedWith("Timelock already allowed to be reverted");
+      });
+    });
+  });
+  context("Caller does not have remaining tokens", async function () {
+    it("reverts", async function () {
+      await expect(
+        timelockManager.connect(roles.recipient1).allowTimelockToBeReverted()
+      ).to.be.revertedWith("Recipient does not have remaining tokens");
     });
   });
 });

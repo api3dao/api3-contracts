@@ -21,6 +21,10 @@ import "./interfaces/ITimelockManager.sol";
 contract TimelockManager is Ownable, ITimelockManager {
     using SafeMath for uint256;
 
+    /// @dev If an address has allowed the owner of this contract (i.e., the
+    /// API3 DAO) to cancel their timelock
+    mapping(address => bool) private allowedTimelockToBeReverted;
+
     struct Timelock {
         uint256 totalAmount;
         uint256 remainingAmount;
@@ -61,6 +65,48 @@ contract TimelockManager is Ownable, ITimelockManager {
         );
         api3Pool = IApi3Pool(api3PoolAddress);
         emit Api3PoolUpdated(api3PoolAddress);
+    }
+
+    function revertTimelock(
+        address recipient,
+        address destination
+        )
+        external
+        override
+        onlyOwner
+        onlyIfDestinationIsValid(destination)
+        onlyIfRecipientHasRemainingTokens(recipient)
+    {
+        require(
+            allowedTimelockToBeReverted[recipient],
+            "Recipient did not allow timelock to be reverted"
+            );
+        // Reset permission automatically
+        allowedTimelockToBeReverted[recipient] = false;
+        uint256 remaining = timelocks[recipient].remainingAmount;
+        timelocks[recipient].remainingAmount = 0;
+        require(
+            api3Token.transfer(destination, remaining),
+            "API3 token transfer failed"
+            );
+        emit RevertedTimelock(recipient, destination, remaining);
+    }
+
+    /// @notice Allows the owner (i.e., API3 DAO) to revert the caller's
+    /// timelock
+    /// @dev To be used when the timelock has been created with incorrect
+    /// parameters (for example with releaseEnd at infinity)
+    function allowTimelockToBeReverted()
+        external
+        override
+        onlyIfRecipientHasRemainingTokens(msg.sender)
+    {
+        require(
+            !allowedTimelockToBeReverted[msg.sender],
+            "Timelock already allowed to be reverted"
+        );
+        allowedTimelockToBeReverted[msg.sender] = true;
+        emit AllowedTimelockToBeReverted(msg.sender);
     }
 
     /// @notice Transfers API3 tokens to this contract and timelocks them
@@ -314,6 +360,18 @@ contract TimelockManager is Ownable, ITimelockManager {
         returns (uint256 remainingAmount)
     {
         remainingAmount = timelocks[recipient].remainingAmount;
+    }
+
+    /// @notice Returns if the recipient's timelock is revertible
+    /// @param recipient Recipient of tokens
+    /// @return revertStatus If the recipient's timelock is revertible
+    function getIfTimelockIsRevertible(address recipient)
+        external
+        view
+        override
+        returns (bool revertStatus)
+    {
+        revertStatus = allowedTimelockToBeReverted[recipient];
     }
 
     /// @dev Reverts if the destination is address(0)
