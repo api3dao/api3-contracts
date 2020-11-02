@@ -362,6 +362,19 @@ describe("transferAndLock", function () {
         ).to.be.revertedWith("releaseEnd has to be larger than releaseStart");
       });
     });
+    context("If releaseStart is smaller than now", async function () {
+      it("reverts", async function () {
+        await expect(
+          timelockManager.connect(roles.dao).transferAndLock(
+            roles.dao._address,
+            timelocks[0].recipient,
+            timelocks[0].amount,
+            0,
+            timelocks[0].releaseEnd
+          )
+        ).to.be.revertedWith("releaseStart has to be in the future");
+      });
+    });
   });
   context("If the caller is not the DAO", async function () {
     it("reverts", async function () {

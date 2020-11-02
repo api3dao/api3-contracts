@@ -113,7 +113,6 @@ contract TimelockManager is Ownable, ITimelockManager {
     /// @dev source needs to approve() this contract to transfer amount number
     /// of tokens beforehand.
     /// A recipient cannot have multiple independent timelocks.
-    /// releaseStart does not have to be after now.
     /// @param source Source of tokens
     /// @param recipient Recipient of tokens
     /// @param amount Amount of tokens
@@ -138,6 +137,10 @@ contract TimelockManager is Ownable, ITimelockManager {
         require(
             releaseEnd > releaseStart,
             "releaseEnd has to be larger than releaseStart"
+            );
+        require(
+            releaseStart > now,
+            "releaseStart has to be in the future"
             );
         timelocks[recipient] = Timelock({
             totalAmount: amount,
