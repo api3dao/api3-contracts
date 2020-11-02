@@ -11,7 +11,13 @@ import "./interfaces/IApi3Token.sol";
 /// minting privileges to addresses. Any account is allowed to burn tokens.
 contract Api3Token is ERC20, Ownable, IApi3Token {
     /// @dev If an address is authorized to mint tokens
+    /// Token minting authorization is granted by the token contract owner
+    /// (i.e., the API3 DAO).
     mapping(address => bool) private isMinter;
+    /// @dev If an address is authorized to burn tokens
+    /// Token burning authorization is granted by the address itself (i.e.,
+    /// anyone can declare themselves a token burner)
+    mapping(address => bool) private isBurner;
 
     /// @param contractOwner Address that will receive the ownership of the
     /// token contract
@@ -57,6 +63,20 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         emit MinterStatusUpdated(minterAddress, minterStatus);
     }
 
+    /// @notice Updates the caller is authorized to burn tokens
+    /// @param burnerStatus Updated minter authorization status
+    function updateBurnerStatus(bool burnerStatus)
+        external
+        override
+    {
+        require(
+            isBurner[msg.sender] != burnerStatus,
+            "Input will not update status"
+            );
+        isBurner[msg.sender] = burnerStatus;
+        emit BurnerStatusUpdated(msg.sender, burnerStatus);
+    }
+
     /// @notice Mints tokens
     /// @param account Address that will receive the minted tokens
     /// @param amount Amount that will be minted
@@ -77,6 +97,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         external
         override
     {
+        require(isBurner[msg.sender], "Only burners are allowed to burn");
         _burn(msg.sender, amount);
     }
 
@@ -91,5 +112,18 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         returns(bool minterStatus)
     {
         minterStatus = isMinter[minterAddress];
+    }
+
+    /// @notice Returns if an address is authorized to burn tokens
+    /// @param burnerAddress Address whose burner authorization status will be
+    /// returned
+    /// @return burnerStatus Burner authorization status
+    function getBurnerStatus(address burnerAddress)
+        external
+        view
+        override
+        returns(bool burnerStatus)
+    {
+        burnerStatus = isBurner[burnerAddress];
     }
 }
