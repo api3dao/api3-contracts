@@ -32,7 +32,7 @@ describe("constructor", function () {
   });
 });
 
-describe("updateMinterStatus", function () {
+describe("renounceOwnership", function () {
   context("If the caller is the DAO", async function () {
     it("reverts", async function () {
       await expect(
