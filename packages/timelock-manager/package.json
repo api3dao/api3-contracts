@@ -11,7 +11,8 @@
     "transfer-and-lock:rinkeby": "buidler deploy --tags transfer-and-lock --network rinkeby",
     "flatten": "truffle-flattener ./contracts/TimelockManager.sol > TimelockManager.flat.sol && npm run flatten:delete-license-lines",
     "flatten:delete-license-lines": "sed --in-place '/SPDX-License-Identifier/d' TimelockManager.flat.sol",
-    "test": "buidler test"
+    "test": "buidler test",
+    "test:coverage": "buidler coverage"
   },
   "devDependencies": {
     "@api3-contracts/api3-pool": "^0.1.0",
@@ -25,6 +26,7 @@
     "chai": "^4.2.0",
     "ethereum-waffle": "^3.0.2",
     "ethers": "^5.0.7",
+    "solidity-coverage": "^0.7.11",
     "truffle-flattener": "^1.5.0"
   }
 }

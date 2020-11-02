@@ -1,6 +1,7 @@
 require('dotenv').config();
 usePlugin("@nomiclabs/buidler-waffle");
 usePlugin('buidler-deploy');
+usePlugin('solidity-coverage');
 
 module.exports = {
   networks: {

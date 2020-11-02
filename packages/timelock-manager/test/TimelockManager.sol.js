@@ -314,7 +314,7 @@ describe("transferAndLockMultiple", function () {
 describe("withdraw", function () {
   context("If the caller is the recipient", async function () {
     context("After releaseTime", async function () {
-      it("withdraws", async function () {
+      it("withdraws (test uses evm_setNextBlockTimestamp)", async function () {
         await batchDeployTimelocks();
         // Sort timelocks with respect to their releaseTimes because we have to
         // fast forward the EVM time in sequence
@@ -352,7 +352,7 @@ describe("withdraw", function () {
       context(
         "If the recipient attempts to withdraw a second time",
         async function () {
-          it("reverts", async function () {
+          it("reverts (test uses evm_setNextBlockTimestamp)", async function () {
             await batchDeployTimelocks();
             // Withdraw a timelock once
             const timelock = timelocks[0];
@@ -382,7 +382,7 @@ describe("withdraw", function () {
       context(
         "If the recipient attempts to withdraw to address 0",
         async function () {
-          it("reverts", async function () {
+          it("reverts (test uses evm_setNextBlockTimestamp)", async function () {
             await batchDeployTimelocks();
             const timelock = timelocks[0];
             await ethers.provider.send("evm_setNextBlockTimestamp", [
@@ -415,7 +415,7 @@ describe("withdraw", function () {
       });
     });
     context("Between releaseStart and releaseEnd", async function () {
-      it("withdraws", async function () {
+      it("withdraws (test uses evm_setNextBlockTimestamp)", async function () {
         await batchDeployTimelocks();
         const timelock = timelocks[0];
         // Withdraw at the middle of the vesting schedule
@@ -606,7 +606,7 @@ describe("withdrawToPool", function () {
 });
 
 describe("getWithdrawable", function () {
-  it("returns the withdrawable amount", async function () {
+  it("returns the withdrawable amount (test uses evm_setNextBlockTimestamp)", async function () {
     await batchDeployTimelocks();
     const timelock = timelocks[0];
     expect(await timelockManager.getWithdrawable(timelock.recipient)).to.equal(
