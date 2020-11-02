@@ -34,6 +34,27 @@ describe("constructor", function () {
 
 describe("updateMinterStatus", function () {
   context("If the caller is the DAO", async function () {
+    it("reverts", async function () {
+      await expect(
+        api3Token
+          .connect(roles.dao)
+          .renounceOwnership()
+      ).to.be.revertedWith("Ownership cannot be renounced");
+    });
+  });
+  context("If the caller is not the DAO", async function () {
+    it("reverts", async function () {
+      await expect(
+        api3Token
+          .connect(roles.randomPerson)
+          .renounceOwnership()
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+});
+
+describe("updateMinterStatus", function () {
+  context("If the caller is the DAO", async function () {
     it("can be used to give minting authorization", async function () {
       // Authorizer minter to mint
       await expect(

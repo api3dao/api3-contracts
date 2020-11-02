@@ -28,6 +28,14 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
             _mint(mintingDestination, 1e8 * 1e18);
         }
 
+    function renounceOwnership()
+        public
+        override
+        onlyOwner
+    {
+        revert("Ownership cannot be renounced");
+    }
+
     /// @notice Updates if an address is authorized to mint tokens
     /// @param minterAddress Address whose minter authorization status will be
     /// updated
