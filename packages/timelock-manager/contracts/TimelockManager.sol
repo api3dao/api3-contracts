@@ -67,6 +67,7 @@ contract TimelockManager is Ownable, ITimelockManager {
     /// @dev source needs to approve() this contract to transfer amount number
     /// of tokens beforehand.
     /// A recipient cannot have multiple independent timelocks.
+    /// releaseStart does not have to be after now.
     /// @param source Source of tokens
     /// @param recipient Recipient of tokens
     /// @param amount Amount of tokens
