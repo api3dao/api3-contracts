@@ -24,8 +24,9 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         ERC20("API3", "API3")
         {
             transferOwnership(contractOwner);
-            // Initial supply is 100 million (1e8)
-            _mint(mintingDestination, 1e8 * 1e18);
+            // Initial supply is 100 million (100e6)
+            // We are using ether because the token has 18 decimals like ETH
+            _mint(mintingDestination, 100e6 ether);
         }
 
     function renounceOwnership()
