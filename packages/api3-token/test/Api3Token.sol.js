@@ -17,6 +17,10 @@ beforeEach(async () => {
 
 describe("constructor", function () {
   it("deploys correctly", async function () {
+    expect(await api3Token.name()).to.equal('API3');
+    expect(await api3Token.symbol()).to.equal('API3');
+    expect(await api3Token.decimals()).to.equal(18);
+
     expect(await api3Token.owner()).to.equal(roles.dao._address);
 
     const expectedTotalSupply = ethers.utils.parseEther((1e8).toString());
