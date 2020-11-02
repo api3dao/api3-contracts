@@ -258,11 +258,6 @@ contract TimelockManager is Ownable, ITimelockManager {
         uint256 remaining = timelocks[recipient].remainingAmount;
         uint256 timelocked = remaining.sub(withdrawable);
         timelocks[recipient].remainingAmount = 0;
-        emit WithdrawnToPool(
-            recipient,
-            api3PoolAddress,
-            beneficiary
-            );
         // Approve the total amount
         api3Token.approve(address(api3Pool), remaining);
         // Deposit the funds that are withdrawable without vesting
@@ -283,6 +278,11 @@ contract TimelockManager is Ownable, ITimelockManager {
             beneficiary,
             now > timelocks[recipient].releaseStart ? now : timelocks[recipient].releaseStart,
             timelocks[recipient].releaseEnd
+            );
+        emit WithdrawnToPool(
+            recipient,
+            api3PoolAddress,
+            beneficiary
             );
     }
 
