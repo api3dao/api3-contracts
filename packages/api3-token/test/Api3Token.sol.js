@@ -23,7 +23,7 @@ describe("constructor", function () {
 
     expect(await api3Token.owner()).to.equal(roles.dao._address);
 
-    const expectedTotalSupply = ethers.utils.parseEther((1e8).toString());
+    const expectedTotalSupply = ethers.utils.parseEther((100e6).toString());
     const totalSupply = await api3Token.totalSupply();
     expect(totalSupply).to.equal(expectedTotalSupply);
 
@@ -33,14 +33,14 @@ describe("constructor", function () {
 });
 
 describe("renounceOwnership", function () {
-  context("If the caller is the DAO", async function () {
+  context("Caller is the DAO", async function () {
     it("reverts", async function () {
       await expect(
         api3Token.connect(roles.dao).renounceOwnership()
       ).to.be.revertedWith("Ownership cannot be renounced");
     });
   });
-  context("If the caller is not the DAO", async function () {
+  context("Caller is not the DAO", async function () {
     it("reverts", async function () {
       await expect(
         api3Token.connect(roles.randomPerson).renounceOwnership()
@@ -50,8 +50,8 @@ describe("renounceOwnership", function () {
 });
 
 describe("updateMinterStatus", function () {
-  context("If the caller is the DAO", async function () {
-    it("can be used to give minting authorization", async function () {
+  context("Caller is the DAO", async function () {
+    it("can be used to give and revoke minting authorization", async function () {
       // Authorize minter to mint
       await expect(
         api3Token
@@ -65,7 +65,7 @@ describe("updateMinterStatus", function () {
       );
       // Mint 200 million tokens
       const initialTotalSupply = await api3Token.totalSupply();
-      const amountToBeMinted = ethers.utils.parseEther((2e8).toString());
+      const amountToBeMinted = ethers.utils.parseEther((200e6).toString());
       await api3Token
         .connect(roles.minter)
         .mint(roles.minter._address, amountToBeMinted);
@@ -75,12 +75,6 @@ describe("updateMinterStatus", function () {
       expect(totalSupply).to.equal(expectedTotalSupply);
       const minterBalance = await api3Token.balanceOf(roles.minter._address);
       expect(minterBalance).to.equal(amountToBeMinted);
-    });
-    it("can be used to revoke minting authorization", async function () {
-      // Authorizer minter to mint, to revoke later
-      await api3Token
-        .connect(roles.dao)
-        .updateMinterStatus(roles.minter._address, true);
       // Revoke minting authorization
       await expect(
         api3Token
@@ -98,11 +92,11 @@ describe("updateMinterStatus", function () {
           .connect(roles.minter)
           .mint(
             roles.minter._address,
-            ethers.utils.parseEther((1e8).toString())
+            ethers.utils.parseEther((200e6).toString())
           )
       ).to.be.revertedWith("Only minters are allowed to mint");
     });
-    context("If the input will not update state", async function () {
+    context("Input will not update state", async function () {
       it("reverts", async function () {
         await expect(
           api3Token
@@ -120,7 +114,7 @@ describe("updateMinterStatus", function () {
       });
     });
   });
-  context("If the caller is not the DAO", async function () {
+  context("Caller is not the DAO", async function () {
     it("reverts", async function () {
       await expect(
         api3Token
@@ -142,7 +136,7 @@ describe("updateBurnerStatus", function () {
       .withArgs(roles.dao._address, false);
     expect(await api3Token.getBurnerStatus(roles.dao._address)).to.equal(false);
   });
-  context("If the input will not update state", async function () {
+  context("Input will not update state", async function () {
     it("reverts", async function () {
       await expect(
         api3Token.connect(roles.dao).updateBurnerStatus(false)

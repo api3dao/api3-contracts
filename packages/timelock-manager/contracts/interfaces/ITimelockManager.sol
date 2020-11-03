@@ -11,7 +11,7 @@ interface ITimelockManager {
         uint256 amount
         );
 
-    event AllowedTimelockToBeReverted(address recipient);
+    event PermittedTimelockToBeReverted(address recipient);
 
     event TransferredAndLocked(
         address source,
@@ -41,7 +41,7 @@ interface ITimelockManager {
         )
         external;
 
-    function allowTimelockToBeReverted()
+    function permitTimelockToBeReverted()
         external;
 
     function transferAndLock(

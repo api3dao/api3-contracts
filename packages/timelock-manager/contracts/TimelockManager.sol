@@ -24,6 +24,7 @@ contract TimelockManager is Ownable, ITimelockManager {
     /// @dev If an address has permitted the owner of this contract (i.e., the
     /// API3 DAO) to revert (i.e., cancel and withdraw the tokens) their
     /// timelock
+    mapping(address => bool) private permittedTimelockToBeReverted;
 
     struct Timelock {
         uint256 totalAmount;
@@ -86,11 +87,11 @@ contract TimelockManager is Ownable, ITimelockManager {
             "Invalid destination"
             );
         require(
-            allowedTimelockToBeReverted[recipient],
-            "Recipient did not allow timelock to be reverted"
+            permittedTimelockToBeReverted[recipient],
+            "Not permitted to revert timelock"
             );
         // Reset permission automatically
-        allowedTimelockToBeReverted[recipient] = false;
+        permittedTimelockToBeReverted[recipient] = false;
         uint256 remaining = timelocks[recipient].remainingAmount;
         timelocks[recipient].remainingAmount = 0;
         require(
@@ -104,17 +105,17 @@ contract TimelockManager is Ownable, ITimelockManager {
     /// timelock
     /// @dev To be used when the timelock has been created with incorrect
     /// parameters (for example with releaseEnd at infinity)
-    function allowTimelockToBeReverted()
+    function permitTimelockToBeReverted()
         external
         override
         onlyIfRecipientHasRemainingTokens(msg.sender)
     {
         require(
-            !allowedTimelockToBeReverted[msg.sender],
-            "Timelock already allowed to be reverted"
+            !permittedTimelockToBeReverted[msg.sender],
+            "Input will not update state"
         );
-        allowedTimelockToBeReverted[msg.sender] = true;
-        emit AllowedTimelockToBeReverted(msg.sender);
+        permittedTimelockToBeReverted[msg.sender] = true;
+        emit PermittedTimelockToBeReverted(msg.sender);
     }
 
     /// @notice Transfers API3 tokens to this contract and timelocks them
@@ -144,11 +145,11 @@ contract TimelockManager is Ownable, ITimelockManager {
         require(amount != 0, "Amount cannot be 0");
         require(
             releaseEnd > releaseStart,
-            "releaseEnd has to be larger than releaseStart"
+            "releaseEnd not larger than releaseStart"
             );
         require(
             releaseStart > now,
-            "releaseStart has to be in the future"
+            "releaseStart not in the future"
             );
         timelocks[recipient] = Timelock({
             totalAmount: amount,
@@ -193,7 +194,7 @@ contract TimelockManager is Ownable, ITimelockManager {
             recipients.length == amounts.length
                 && recipients.length == releaseStarts.length
                 && recipients.length == releaseEnds.length,
-            "Lengths of parameters do not match"
+            "Parameters are of unequal length"
             );
         require(
             recipients.length <= 30,
@@ -251,7 +252,7 @@ contract TimelockManager is Ownable, ITimelockManager {
     {
         require(
             beneficiary != address(0),
-            "Cannot withdraw to benefit address 0"
+            "beneficiary cannot be 0"
             );
         require(address(api3Pool) != address(0), "API3 pool not set yet");
         require(
@@ -380,7 +381,7 @@ contract TimelockManager is Ownable, ITimelockManager {
         override
         returns (bool revertStatus)
     {
-        revertStatus = allowedTimelockToBeReverted[recipient];
+        revertStatus = permittedTimelockToBeReverted[recipient];
     }
 
     /// @dev Reverts if the recipient does not have remaining tokens
