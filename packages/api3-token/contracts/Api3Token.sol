@@ -8,15 +8,17 @@ import "./interfaces/IApi3Token.sol";
 
 /// @title API3 token contract
 /// @notice The API3 token contract is owned by the API3 DAO, which can grant
-/// minting privileges to addresses. Any account is allowed to burn tokens.
+/// minting privileges to addresses. Any account is allowed to burn their 
+/// tokens, but this functionality is put behind a barrier that requires the
+/// account to make a call to remove.
 contract Api3Token is ERC20, Ownable, IApi3Token {
-    /// @dev If an address is authorized to mint tokens
+    /// @dev If an address is authorized to mint tokens.
     /// Token minting authorization is granted by the token contract owner
     /// (i.e., the API3 DAO).
     mapping(address => bool) private isMinter;
-    /// @dev If an address is authorized to burn tokens
-    /// Token burning authorization is granted by the address itself (i.e.,
-    /// anyone can declare themselves a token burner)
+    /// @dev If an address is authorized to burn tokens.
+    /// Token burning authorization is granted by the address itself, i.e.,
+    /// anyone can declare themselves a token burner.
     mapping(address => bool) private isBurner;
 
     /// @param contractOwner Address that will receive the ownership of the
@@ -35,6 +37,8 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
             _mint(mintingDestination, 100e6 ether);
         }
 
+    /// @notice The OpenZeppelin renounceOwnership() implementation is
+    /// overriden to prevent ownership from being renounced accidentally.
     function renounceOwnership()
         public
         override
@@ -63,7 +67,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         emit MinterStatusUpdated(minterAddress, minterStatus);
     }
 
-    /// @notice Updates the caller is authorized to burn tokens
+    /// @notice Updates if the caller is authorized to burn tokens
     /// @param burnerStatus Updated minter authorization status
     function updateBurnerStatus(bool burnerStatus)
         external
@@ -91,7 +95,7 @@ contract Api3Token is ERC20, Ownable, IApi3Token {
         _mint(account, amount);
     }
 
-    /// @notice Burns sender's tokens
+    /// @notice Burns caller's tokens
     /// @param amount Amount that will be burned
     function burn(uint256 amount)
         external
