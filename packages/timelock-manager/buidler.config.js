@@ -20,7 +20,7 @@ module.exports = {
     deployer: {
       default: 0,
       1: 0,
-      4: '0x1Da10cDEc44538E1854791b8e71FA4Ef05b4b238',
+      4: 0,
     },
   },
   solc: {

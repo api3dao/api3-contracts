@@ -1,14 +1,14 @@
 {
   "api3DaoVault": {
-    "1": "0",
-    "4": "0x0c26bb185ad09c5a41e8fd127bf7b8c99e81e5dc"
+    "1": "0xe7af7c5982e073ac6525a34821fe1b3e8e432099",
+    "4": ""
   },
   "api3Token": {
-    "1": "0",
-    "4": "0x8878C14cFC1233db8AeDc09d497b7fb95ba96fD4"
+    "1": "0x0b38210ea11411557c13457D4dA7dC6ea731B88a",
+    "4": ""
   },
   "timelockManager": {
-    "1": "0",
-    "4": "0x2176D77Fd2D445DA01E004e93ac040eFc8ef805A"
+    "1": "0xFaef86994a37F1c8b2A5c73648F07dd4eFF02baA",
+    "4": ""
   }
 }

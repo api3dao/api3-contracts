@@ -278,13 +278,16 @@ contract TimelockManager is Ownable, ITimelockManager {
         // Deposit the funds that are still timelocked with vesting.
         // The vesting will continue the same way at the pool, released
         // linearly.
-        api3Pool.depositWithVesting(
-            address(this),
-            timelocked,
-            beneficiary,
-            now > timelocks[recipient].releaseStart ? now : timelocks[recipient].releaseStart,
-            timelocks[recipient].releaseEnd
-            );
+        if (timelocked != 0)
+        {
+            api3Pool.depositWithVesting(
+                address(this),
+                timelocked,
+                beneficiary,
+                now > timelocks[recipient].releaseStart ? now : timelocks[recipient].releaseStart,
+                timelocks[recipient].releaseEnd
+                );
+        }
         emit WithdrawnToPool(
             recipient,
             api3PoolAddress,
