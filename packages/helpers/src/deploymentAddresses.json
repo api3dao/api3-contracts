@@ -10,5 +10,9 @@
   "timelockManager": {
     "1": "0xFaef86994a37F1c8b2A5c73648F07dd4eFF02baA",
     "4": ""
+  },
+  "timelockManagerCliff": {
+    "1": "0x32D228B5d44Fd18FefBfd68BfE5A5F3f75C873AE",
+    "4": ""
   }
 }
