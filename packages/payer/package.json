@@ -1,0 +1,20 @@
+{
+  "name": "@api3-contracts/payer",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:mainnet": "hardhat deploy --network mainnet",
+    "flatten": "hardhat flatten contracts/Payer.sol > Payer.flat.sol && npm run flatten:delete-license-lines",
+    "flatten:delete-license-lines": "sed --in-place '/SPDX-License-Identifier/d' Payer.flat.sol"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "@openzeppelin/contracts": "^3.3.0",
+    "chai": "^4.2.0",
+    "ethereum-waffle": "^3.2.1",
+    "ethers": "^5.0.24",
+    "hardhat": "^2.0.5"
+  }
+}
