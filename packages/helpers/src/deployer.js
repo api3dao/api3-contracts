@@ -19,6 +19,22 @@ async function deployTimelockManager(deployer, ownerAddress, api3TokenAddress) {
   return timelockManager;
 }
 
+async function deployTimelockManagerReversible(
+  deployer,
+  ownerAddress,
+  api3TokenAddress
+) {
+  const timelockManagerFactory = await ethers.getContractFactory(
+    "TimelockManagerReversible",
+    deployer
+  );
+  const timelockManagerReversible = await timelockManagerFactory.deploy(
+    api3TokenAddress,
+    ownerAddress
+  );
+  return timelockManagerReversible;
+}
+
 async function deployPool(
   deployer,
   api3TokenAddress,
@@ -55,6 +71,7 @@ async function deployInflationManager(
 module.exports = {
   deployToken: deployToken,
   deployTimelockManager: deployTimelockManager,
+  deployTimelockManagerReversible: deployTimelockManagerReversible,
   deployPool: deployPool,
   deployInflationManager: deployInflationManager,
 };
