@@ -24,11 +24,11 @@ async function deployTimelockManagerReversible(
   ownerAddress,
   api3TokenAddress
 ) {
-  const timelockManagerFactory = await ethers.getContractFactory(
+  const timelockManagerReversibleFactory = await ethers.getContractFactory(
     "TimelockManagerReversible",
     deployer
   );
-  const timelockManagerReversible = await timelockManagerFactory.deploy(
+  const timelockManagerReversible = await timelockManagerReversibleFactory.deploy(
     api3TokenAddress,
     ownerAddress
   );

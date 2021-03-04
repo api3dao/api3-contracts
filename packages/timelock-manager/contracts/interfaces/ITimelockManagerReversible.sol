@@ -2,13 +2,12 @@
 pragma solidity 0.6.12;
 
 interface ITimelockManagerReversible {
-    event RevertedTimelock(
-        address indexed recipient,
-        address destination,
+
+    event StoppedVesting(
+        address recipient, 
+        address destination, 
         uint256 amount
     );
-
-    event StopVesting(address recipient, address destination, uint256 amount);
 
     event TransferredAndLocked(
         address source,
@@ -18,11 +17,15 @@ interface ITimelockManagerReversible {
         uint256 releaseEnd
     );
 
-    event Withdrawn(address indexed recipient, uint256 amount);
+    event Withdrawn(
+        address indexed recipient, 
+        uint256 amount
+    );
 
-    function revertTimelock(address recipient, address destination) external;
-
-    function stopVesting(address recipient, address destination) external;
+    function stopVesting(
+        address recipient, 
+        address destination
+    ) external;
 
     function transferAndLock(
         address source,
@@ -45,7 +48,9 @@ interface ITimelockManagerReversible {
     function getWithdrawable(address recipient)
         external
         view
-        returns (uint256 withdrawable);
+        returns (
+            uint256 withdrawable
+        );
 
     function getTimelock(address recipient)
         external
@@ -60,5 +65,7 @@ interface ITimelockManagerReversible {
     function getRemainingAmount(address recipient)
         external
         view
-        returns (uint256 remainingAmount);
+        returns (
+            uint256 remainingAmount
+        );
 }

@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@api3-contracts/api3-token/contracts/interfaces/IApi3Token.sol";
 import "./interfaces/ITimelockManagerReversible.sol";
 
-/// @title Contract that the API3 DAO uses to timelock API3 tokens
-/// @notice The owner of TimelockManager (i.e., API3 DAO) can send tokens to
+/// @title Contract that the TimeLockManager Contract Owner uses to timelock API3 tokens
+/// @notice The owner of TimelockManager can send tokens to
 /// TimelockManager to timelock them. These tokens will then be vested to their
 /// recipient linearly, starting from releaseStart and ending at releaseEnd of
 /// the respective timelock.
@@ -27,38 +27,25 @@ contract TimelockManagerReversible is Ownable, ITimelockManagerReversible {
 
     /// @param api3TokenAddress Address of the API3 token contract
     /// @param timelockManagerOwner Address that will receive the ownership of
-    /// the TimelockManager contract (i.e., the API3 DAO)
-    constructor(address api3TokenAddress, address timelockManagerOwner) public {
+    /// the TimelockManager contract
+    constructor(
+        address api3TokenAddress, 
+        address timelockManagerOwner
+        ) 
+        public 
+    {
         api3Token = IApi3Token(api3TokenAddress);
         transferOwnership(timelockManagerOwner);
     }
 
-    /// @notice Called by the owner (i.e., API3 DAO) to revert the timelock of
-    /// a recipient
-    /// @param recipient Original recipient of tokens
-    /// @param destination Destination of the tokens locked by the reverted
-    /// timelock
-    function revertTimelock(address recipient, address destination)
-        external
-        override
-        onlyOwner
-        onlyIfRecipientHasRemainingTokens(recipient)
-    {
-        require(destination != address(0), "Invalid destination");
-        uint256 remaining = timelocks[recipient].remainingAmount;
-        timelocks[recipient].remainingAmount = 0;
-        require(
-            api3Token.transfer(destination, remaining),
-            "API3 token transfer failed"
-        );
-        emit RevertedTimelock(recipient, destination, remaining);
-    }
-
-    /// @notice Called by the owner (i.e., API3 DAO) to stop the vesting
+    /// @notice Called by the ContractOwner to stop the vesting of
     /// a recipient
     /// @param recipient Original recipient of tokens
     /// @param destination Destination of the excess tokens vested to the addresss
-    function stopVesting(address recipient, address destination)
+    function stopVesting(
+        address recipient, 
+        address destination
+        )
         external
         override
         onlyOwner
@@ -73,7 +60,7 @@ contract TimelockManagerReversible is Ownable, ITimelockManagerReversible {
             api3Token.transfer(destination, reclaimedTokens),
             "API3 token transfer failed"
         );
-        emit StopVesting(recipient, destination, reclaimedTokens);
+        emit StoppedVesting(recipient, destination, reclaimedTokens);
     }
 
     /// @notice Transfers API3 tokens to this contract and timelocks them
@@ -91,7 +78,11 @@ contract TimelockManagerReversible is Ownable, ITimelockManagerReversible {
         uint256 amount,
         uint256 releaseStart,
         uint256 releaseEnd
-    ) public override onlyOwner {
+        ) 
+        public 
+        override 
+        onlyOwner
+    {
         require(
             timelocks[recipient].remainingAmount == 0,
             "Recipient has remaining tokens"
@@ -122,7 +113,7 @@ contract TimelockManagerReversible is Ownable, ITimelockManagerReversible {
     }
 
     /// @notice Convenience function that calls transferAndLock() multiple times
-    /// @dev source is expected to be a single address, i.e., the API3 DAO.
+    /// @dev source is expected to be a single address.
     /// source needs to approve() this contract to transfer the sum of the
     /// amounts of tokens to be transferred and locked.
     /// @param source Source of tokens
@@ -136,7 +127,11 @@ contract TimelockManagerReversible is Ownable, ITimelockManagerReversible {
         uint256[] calldata amounts,
         uint256[] calldata releaseStarts,
         uint256[] calldata releaseEnds
-    ) external override onlyOwner {
+        ) 
+        external 
+        override 
+        onlyOwner 
+    {
         require(
             recipients.length == amounts.length &&
                 recipients.length == releaseStarts.length &&
