@@ -92,7 +92,6 @@ contract TimelockManagerReversible is Ownable, ITimelockManagerReversible {
             releaseEnd > releaseStart,
             "releaseEnd not larger than releaseStart"
         );
-        require(releaseStart > now, "releaseStart not in the future");
         timelocks[recipient] = Timelock({
             totalAmount: amount,
             remainingAmount: amount,

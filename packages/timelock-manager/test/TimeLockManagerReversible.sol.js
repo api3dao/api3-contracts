@@ -95,8 +95,8 @@ beforeEach(async () => {
     {
       recipient: roles.recipient4._address,
       amount: ethers.utils.parseEther((8e2).toString()),
-      releaseStart: ethers.BigNumber.from(currentTimestamp + 15000),
-      releaseEnd: ethers.BigNumber.from(currentTimestamp + 18000),
+      releaseStart: ethers.BigNumber.from(currentTimestamp - 2000),
+      releaseEnd: ethers.BigNumber.from(currentTimestamp + 2000),
     },
   ];
   api3Token = await deployer.deployToken(
@@ -286,57 +286,40 @@ describe("transferAndLock", function () {
     context("Recipient does not have remaining tokens", async function () {
       context("Transferred and locked amount is not 0", async function () {
         context("releaseEnd is larger than releaseStart", async function () {
-          context("releaseStart is larger than now", async function () {
-            it("transfers and locks tokens", async function () {
-              // Approve enough tokens to cover all timelocks
-              await api3Token.connect(roles.contractOwner).approve(
-                timelockManager.address,
-                timelocks.reduce(
-                  (acc, timelock) => acc.add(timelock.amount),
-                  ethers.BigNumber.from(0)
-                )
-              );
-              // Deploy timelocks individually
-              for (const timelock of timelocks) {
-                let tx = await timelockManager
-                  .connect(roles.contractOwner)
-                  .transferAndLock(
-                    roles.contractOwner._address,
-                    timelock.recipient,
-                    timelock.amount,
-                    timelock.releaseStart,
-                    timelock.releaseEnd
-                  );
-                await utils.verifyLog(
-                  timelockManager,
-                  tx,
-                  "TransferredAndLocked(address,address,uint256,uint256,uint256)",
-                  {
-                    source: roles.contractOwner._address,
-                    recipient: timelock.recipient,
-                    amount: timelock.amount,
-                    releaseStart: timelock.releaseStart,
-                    releaseEnd: timelock.releaseEnd,
-                  }
+          it("transfers and locks tokens", async function () {
+            // Approve enough tokens to cover all timelocks
+            await api3Token.connect(roles.contractOwner).approve(
+              timelockManager.address,
+              timelocks.reduce(
+                (acc, timelock) => acc.add(timelock.amount),
+                ethers.BigNumber.from(0)
+              )
+            );
+            // Deploy timelocks individually
+            for (const timelock of timelocks) {
+              let tx = await timelockManager
+                .connect(roles.contractOwner)
+                .transferAndLock(
+                  roles.contractOwner._address,
+                  timelock.recipient,
+                  timelock.amount,
+                  timelock.releaseStart,
+                  timelock.releaseEnd
                 );
-              }
-              await verifyDeployedTimelocks();
-            });
-          });
-          context("releaseStart is smaller than now", async function () {
-            it("reverts", async function () {
-              await expect(
-                timelockManager
-                  .connect(roles.contractOwner)
-                  .transferAndLock(
-                    roles.contractOwner._address,
-                    timelocks[0].recipient,
-                    timelocks[0].amount,
-                    0,
-                    timelocks[0].releaseEnd
-                  )
-              ).to.be.revertedWith("releaseStart not in the future");
-            });
+              await utils.verifyLog(
+                timelockManager,
+                tx,
+                "TransferredAndLocked(address,address,uint256,uint256,uint256)",
+                {
+                  source: roles.contractOwner._address,
+                  recipient: timelock.recipient,
+                  amount: timelock.amount,
+                  releaseStart: timelock.releaseStart,
+                  releaseEnd: timelock.releaseEnd,
+                }
+              );
+            }
+            await verifyDeployedTimelocks();
           });
         });
         context(

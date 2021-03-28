@@ -14,5 +14,9 @@
   "timelockManagerCliff": {
     "1": "0x32D228B5d44Fd18FefBfd68BfE5A5F3f75C873AE",
     "4": ""
+  },
+  "timelockManagerReversibleOwner": {
+    "1": "",
+    "4": ""
   }
 }

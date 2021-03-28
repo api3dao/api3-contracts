@@ -4,13 +4,15 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const api3DaoVaultAddress =
-    deploymentAddresses.api3DaoVault[(await getChainId()).toString()];
+  const timelockManagerReversibleOwner =
+    deploymentAddresses.timelockManagerReversibleOwner[
+      (await getChainId()).toString()
+    ];
   const api3TokenAddress =
     deploymentAddresses.api3Token[(await getChainId()).toString()];
 
   const timelockManagerReversible = await deploy("TimelockManagerReversible", {
-    args: [api3TokenAddress, api3DaoVaultAddress],
+    args: [api3TokenAddress, timelockManagerReversibleOwner],
     from: deployer,
   });
 
