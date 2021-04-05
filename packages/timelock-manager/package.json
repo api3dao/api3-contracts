@@ -9,6 +9,8 @@
     "test:coverage": "buidler coverage",
     "deploy:mainnet": "buidler deploy --tags deploy --network mainnet",
     "deploy:rinkeby": "buidler deploy --tags deploy --network rinkeby",
+    "deploy-reversible:mainnet": "buidler deploy --tags deploy-reversible --network mainnet",
+    "deploy-reversible:rinkeby": "buidler deploy --tags deploy-reversible --network rinkeby",
     "transfer-and-lock:mainnet": "buidler deploy --tags transfer-and-lock --network mainnet",
     "transfer-and-lock:rinkeby": "buidler deploy --tags transfer-and-lock --network rinkeby",
     "flatten": "truffle-flattener ./contracts/TimelockManager.sol > TimelockManager.flat.sol && npm run flatten:delete-license-lines",
