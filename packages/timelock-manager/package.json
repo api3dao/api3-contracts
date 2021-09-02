@@ -13,8 +13,8 @@
     "deploy-reversible:rinkeby": "buidler deploy --tags deploy-reversible --network rinkeby",
     "transfer-and-lock:mainnet": "buidler deploy --tags transfer-and-lock --network mainnet",
     "transfer-and-lock:rinkeby": "buidler deploy --tags transfer-and-lock --network rinkeby",
-    "flatten": "truffle-flattener ./contracts/TimelockManager.sol > TimelockManager.flat.sol && npm run flatten:delete-license-lines",
-    "flatten:delete-license-lines": "sed --in-place '/SPDX-License-Identifier/d' TimelockManager.flat.sol"
+    "flatten": "truffle-flattener ./contracts/TimelockManager.sol > TimelockManager.flat.sol && truffle-flattener ./contracts/TimeLockManagerReversible.sol > TimeLockManagerReversible.flat.sol && npm run flatten:delete-license-lines",
+    "flatten:delete-license-lines": "sed --in-place '/SPDX-License-Identifier/d' *.flat.sol"
   },
   "devDependencies": {
     "@api3-contracts/api3-pool": "^0.1.0",
